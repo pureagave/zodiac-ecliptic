@@ -1,2 +1,5 @@
 .tooling/
+.gradle/
+**/build/
+local.properties
 *.log
