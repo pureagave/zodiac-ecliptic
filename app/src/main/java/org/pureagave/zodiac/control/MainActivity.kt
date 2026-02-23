@@ -1,6 +1,7 @@
 package org.pureagave.zodiac.control
 
 import org.pureagave.zodiac.control.data.FakeTelemetryRepository
+import org.pureagave.zodiac.control.data.FakeVehicleGateway
 import org.pureagave.zodiac.control.ui.viewmodel.CockpitViewModel
 import org.pureagave.zodiac.control.ui.viewmodel.CockpitViewModelFactory
 import android.os.Bundle
@@ -20,7 +21,11 @@ class MainActivity : ComponentActivity() {
 private fun zodiacApp() {
     val viewModel: CockpitViewModel =
         viewModel(
-            factory = CockpitViewModelFactory(FakeTelemetryRepository()),
+            factory =
+                CockpitViewModelFactory(
+                    telemetryRepository = FakeTelemetryRepository(),
+                    vehicleGateway = FakeVehicleGateway(),
+                ),
         )
     crtVectorScreen(viewModel = viewModel)
 }
