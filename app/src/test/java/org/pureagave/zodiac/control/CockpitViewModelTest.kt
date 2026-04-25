@@ -1,14 +1,17 @@
 package org.pureagave.zodiac.control
 
 import org.pureagave.zodiac.control.core.model.CockpitMode
+import org.pureagave.zodiac.control.core.model.PlayaMap
 import org.pureagave.zodiac.control.core.model.Telemetry
 import org.pureagave.zodiac.control.core.model.VehicleCommand
 import org.pureagave.zodiac.control.data.FakeVehicleGateway
 import org.pureagave.zodiac.control.data.TelemetryRepository
+import org.pureagave.zodiac.control.data.playa.PlayaMapRepository
 import org.pureagave.zodiac.control.ui.viewmodel.CockpitViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -34,6 +37,7 @@ class CockpitViewModelTest {
                 CockpitViewModel(
                     telemetryRepository = StaticTelemetryRepo(),
                     vehicleGateway = gateway,
+                    playaMapRepository = NoOpPlayaMapRepository,
                 )
 
             vm.setHeading(123)
@@ -41,6 +45,12 @@ class CockpitViewModelTest {
 
             assertTrue(gateway.history().contains(VehicleCommand.SetHeading(123)))
         }
+}
+
+private object NoOpPlayaMapRepository : PlayaMapRepository {
+    override val map: Flow<PlayaMap> = emptyFlow()
+
+    override suspend fun load() = Unit
 }
 
 private class StaticTelemetryRepo : TelemetryRepository {

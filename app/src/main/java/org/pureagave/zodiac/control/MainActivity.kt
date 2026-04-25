@@ -3,6 +3,7 @@ package org.pureagave.zodiac.control
 import org.pureagave.zodiac.control.core.connection.TransportType
 import org.pureagave.zodiac.control.data.FakeTelemetryRepository
 import org.pureagave.zodiac.control.data.RoutedVehicleGateway
+import org.pureagave.zodiac.control.data.playa.AssetsPlayaMapRepository
 import org.pureagave.zodiac.control.data.transport.FakeTransportAdapter
 import org.pureagave.zodiac.control.data.transport.TransportRegistry
 import org.pureagave.zodiac.control.ui.viewmodel.CockpitViewModel
@@ -12,6 +13,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 
 class MainActivity : ComponentActivity() {
@@ -23,6 +25,7 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun zodiacApp() {
+    val context = LocalContext.current
     val gateway =
         remember {
             val registry =
@@ -40,6 +43,7 @@ private fun zodiacApp() {
                 initialTransport = TransportType.BLE,
             )
         }
+    val playaMapRepository = remember { AssetsPlayaMapRepository(context.assets) }
 
     val viewModel: CockpitViewModel =
         viewModel(
@@ -47,6 +51,7 @@ private fun zodiacApp() {
                 CockpitViewModelFactory(
                     telemetryRepository = FakeTelemetryRepository(),
                     vehicleGateway = gateway,
+                    playaMapRepository = playaMapRepository,
                 ),
         )
     crtVectorScreen(viewModel = viewModel)

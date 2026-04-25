@@ -3,6 +3,7 @@ package org.pureagave.zodiac.control.ui.state
 import org.pureagave.zodiac.control.core.connection.ConnectionPhase
 import org.pureagave.zodiac.control.core.connection.TransportType
 import org.pureagave.zodiac.control.core.model.CockpitMode
+import org.pureagave.zodiac.control.core.model.PlayaMap
 
 data class CockpitUiState(
     val headingDeg: Int = 42,
@@ -13,4 +14,5 @@ data class CockpitUiState(
     val selectedTransport: TransportType = TransportType.BLE,
     val connectionPhase: ConnectionPhase = ConnectionPhase.DISCONNECTED,
     val connectionDetail: String? = null,
+    val playaMap: PlayaMap? = null,
 )
