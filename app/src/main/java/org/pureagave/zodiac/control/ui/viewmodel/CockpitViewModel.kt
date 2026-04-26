@@ -1,6 +1,7 @@
 package org.pureagave.zodiac.control.ui.viewmodel
 
 import org.pureagave.zodiac.control.core.connection.TransportType
+import org.pureagave.zodiac.control.core.model.MapMode
 import org.pureagave.zodiac.control.core.model.VehicleCommand
 import org.pureagave.zodiac.control.core.sensor.LocationSourceType
 import org.pureagave.zodiac.control.data.TelemetryRepository
@@ -80,6 +81,10 @@ class CockpitViewModel(
 
     fun selectLocationSource(type: LocationSourceType) {
         viewModelScope.launch { locationSource.select(type) }
+    }
+
+    fun setMapMode(mode: MapMode) {
+        _uiState.update { it.copy(mapMode = mode) }
     }
 
     fun setHeading(headingDeg: Int) {

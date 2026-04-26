@@ -3,6 +3,7 @@ package org.pureagave.zodiac.control.ui.state
 import org.pureagave.zodiac.control.core.connection.ConnectionPhase
 import org.pureagave.zodiac.control.core.connection.TransportType
 import org.pureagave.zodiac.control.core.model.CockpitMode
+import org.pureagave.zodiac.control.core.model.MapMode
 import org.pureagave.zodiac.control.core.model.PlayaMap
 import org.pureagave.zodiac.control.core.sensor.GpsFix
 import org.pureagave.zodiac.control.core.sensor.LocationSourceState
@@ -20,6 +21,7 @@ data class CockpitUiState(
     val playaMap: PlayaMap? = null,
     val selectedLocationSource: LocationSourceType = LocationSourceType.FAKE,
     val locationState: LocationSourceState = LocationSourceState.Disconnected,
+    val mapMode: MapMode = MapMode.TOP,
 ) {
     val egoFix: GpsFix? get() = (locationState as? LocationSourceState.Active)?.fix
 }

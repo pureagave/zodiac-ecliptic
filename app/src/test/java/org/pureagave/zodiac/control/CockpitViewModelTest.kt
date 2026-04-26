@@ -1,6 +1,7 @@
 package org.pureagave.zodiac.control
 
 import org.pureagave.zodiac.control.core.model.CockpitMode
+import org.pureagave.zodiac.control.core.model.MapMode
 import org.pureagave.zodiac.control.core.model.PlayaMap
 import org.pureagave.zodiac.control.core.model.Telemetry
 import org.pureagave.zodiac.control.core.model.VehicleCommand
@@ -26,6 +27,7 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -56,6 +58,34 @@ class CockpitViewModelTest {
                 advanceUntilIdle()
 
                 assertTrue(gateway.history().contains(VehicleCommand.SetHeading(123)))
+            } finally {
+                store.clear()
+            }
+        }
+
+    @Test
+    fun setMapMode_flipsUiState() =
+        runTest {
+            val store = ViewModelStore()
+            try {
+                val factory =
+                    CockpitViewModelFactory(
+                        telemetryRepository = StaticTelemetryRepo(),
+                        vehicleGateway = FakeVehicleGateway(),
+                        playaMapRepository = NoOpPlayaMapRepository,
+                        locationSource = newFakeRoutedLocationSource(this.backgroundScope),
+                    )
+                val vm = ViewModelProvider(store, factory)[CockpitViewModel::class.java]
+
+                assertEquals(MapMode.TOP, vm.uiState.value.mapMode)
+
+                vm.setMapMode(MapMode.TILT)
+                advanceUntilIdle()
+                assertEquals(MapMode.TILT, vm.uiState.value.mapMode)
+
+                vm.setMapMode(MapMode.TOP)
+                advanceUntilIdle()
+                assertEquals(MapMode.TOP, vm.uiState.value.mapMode)
             } finally {
                 store.clear()
             }
