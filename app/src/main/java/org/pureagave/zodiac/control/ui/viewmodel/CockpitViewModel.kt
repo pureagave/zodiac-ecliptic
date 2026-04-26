@@ -1,6 +1,7 @@
 package org.pureagave.zodiac.control.ui.viewmodel
 
 import org.pureagave.zodiac.control.core.connection.TransportType
+import org.pureagave.zodiac.control.core.model.MapLoadResult
 import org.pureagave.zodiac.control.core.model.MapMode
 import org.pureagave.zodiac.control.core.model.VehicleCommand
 import org.pureagave.zodiac.control.core.sensor.LocationSourceType
@@ -66,8 +67,14 @@ class CockpitViewModel(
             }
             launch { playaMapRepository.load() }
             launch {
-                playaMapRepository.map.collect { map ->
-                    _uiState.update { it.copy(playaMap = map) }
+                playaMapRepository.loadResult.collect { result ->
+                    _uiState.update {
+                        when (result) {
+                            is MapLoadResult.Loading -> it.copy(mapLoadError = null)
+                            is MapLoadResult.Loaded -> it.copy(playaMap = result.map, mapLoadError = null)
+                            is MapLoadResult.Failed -> it.copy(mapLoadError = result.message)
+                        }
+                    }
                 }
             }
             launch {
