@@ -8,6 +8,7 @@ import org.pureagave.zodiac.control.data.playa.AssetsPlayaMapRepository
 import org.pureagave.zodiac.control.data.sensor.FakeLocationSource
 import org.pureagave.zodiac.control.data.sensor.LocationSourceRegistry
 import org.pureagave.zodiac.control.data.sensor.RoutedLocationSource
+import org.pureagave.zodiac.control.data.sensor.SystemLocationSource
 import org.pureagave.zodiac.control.data.transport.FakeTransportAdapter
 import org.pureagave.zodiac.control.data.transport.TransportRegistry
 import org.pureagave.zodiac.control.ui.viewmodel.CockpitViewModel
@@ -54,7 +55,11 @@ private fun zodiacApp() {
             val sensorScope = MainScope()
             val registry =
                 LocationSourceRegistry(
-                    sources = listOf(FakeLocationSource(scope = sensorScope)),
+                    sources =
+                        listOf(
+                            FakeLocationSource(scope = sensorScope),
+                            SystemLocationSource(applicationContext = context.applicationContext),
+                        ),
                 )
             RoutedLocationSource(
                 registry = registry,
