@@ -5,6 +5,7 @@ import org.pureagave.zodiac.control.core.sensor.LocationSourceType
 import org.pureagave.zodiac.control.data.FakeTelemetryRepository
 import org.pureagave.zodiac.control.data.RoutedVehicleGateway
 import org.pureagave.zodiac.control.data.playa.AssetsPlayaMapRepository
+import org.pureagave.zodiac.control.data.sensor.BleLocationSource
 import org.pureagave.zodiac.control.data.sensor.FakeLocationSource
 import org.pureagave.zodiac.control.data.sensor.LocationSourceRegistry
 import org.pureagave.zodiac.control.data.sensor.RoutedLocationSource
@@ -59,6 +60,10 @@ private fun zodiacApp() {
                         listOf(
                             FakeLocationSource(scope = sensorScope),
                             SystemLocationSource(applicationContext = context.applicationContext),
+                            BleLocationSource(
+                                applicationContext = context.applicationContext,
+                                scope = sensorScope,
+                            ),
                         ),
                 )
             RoutedLocationSource(
