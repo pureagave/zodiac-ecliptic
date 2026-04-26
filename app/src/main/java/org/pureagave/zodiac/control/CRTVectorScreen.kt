@@ -7,6 +7,8 @@ import org.pureagave.zodiac.control.core.geo.PlayaPoint
 import org.pureagave.zodiac.control.core.geo.PlayaProjection
 import org.pureagave.zodiac.control.core.geo.PlayaViewport
 import org.pureagave.zodiac.control.core.model.CockpitMode
+import org.pureagave.zodiac.control.core.sensor.LocationSourceState
+import org.pureagave.zodiac.control.core.sensor.LocationSourceType
 import org.pureagave.zodiac.control.ui.playamap.drawPlayaMap
 import org.pureagave.zodiac.control.ui.state.CockpitUiState
 import org.pureagave.zodiac.control.ui.viewmodel.CockpitViewModel
@@ -33,7 +35,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontFamily
@@ -82,6 +83,7 @@ fun crtVectorScreen(viewModel: CockpitViewModel) {
                     onSelectTransport = viewModel::selectTransport,
                     onConnect = viewModel::connectTransport,
                     onDisconnect = viewModel::disconnectTransport,
+                    onSelectLocationSource = viewModel::selectLocationSource,
                 )
             }
         }
@@ -162,6 +164,7 @@ private fun rightRail(
     onSelectTransport: (TransportType) -> Unit,
     onConnect: () -> Unit,
     onDisconnect: () -> Unit,
+    onSelectLocationSource: (LocationSourceType) -> Unit,
 ) {
     val modeLine =
         when (state.mode) {
@@ -217,12 +220,43 @@ private fun rightRail(
             actionChip(label = "DISCONNECT", onClick = onDisconnect)
         }
 
+        Text(
+            text = "> GPS",
+            color = Amber,
+            fontSize = 12.sp,
+            fontFamily = FontFamily.Monospace,
+        )
+
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            transportChip(
+                label = "FAKE",
+                selected = state.selectedLocationSource == LocationSourceType.FAKE,
+                onClick = { onSelectLocationSource(LocationSourceType.FAKE) },
+            )
+            transportChip(
+                label = "GPS",
+                selected = state.selectedLocationSource == LocationSourceType.SYSTEM,
+                onClick = { onSelectLocationSource(LocationSourceType.SYSTEM) },
+            )
+            transportChip(
+                label = "BLE",
+                selected = state.selectedLocationSource == LocationSourceType.BLE,
+                onClick = { onSelectLocationSource(LocationSourceType.BLE) },
+            )
+            transportChip(
+                label = "USB",
+                selected = state.selectedLocationSource == LocationSourceType.USB,
+                onClick = { onSelectLocationSource(LocationSourceType.USB) },
+            )
+        }
+
         listOf(
             modeLine to Amber,
             "> LINK ${if (state.linkStable) "ESTABLISHED" else "LOST"}" to
                 (if (state.linkStable) VectorGreen else Amber),
             "> CONN: $connectionLabel" to VectorGreen,
             "> THERMAL ${state.thermalC}C" to VectorGreen,
+            locationLine(state.locationState),
             "> TOUCH INPUT ACTIVE" to VectorGreen,
             "> NO PROTOCOL BINDING (V1)" to Amber,
         ).forEach { (line, color) ->
@@ -235,6 +269,18 @@ private fun rightRail(
         }
     }
 }
+
+private fun locationLine(state: LocationSourceState): Pair<String, Color> =
+    when (state) {
+        LocationSourceState.Disconnected -> "> GPS: OFFLINE" to Amber
+        LocationSourceState.Searching -> "> GPS: SEARCHING" to Amber
+        is LocationSourceState.Active -> {
+            val lat = "%.5f".format(state.fix.location.lat)
+            val lon = "%.5f".format(state.fix.location.lon)
+            "> GPS: $lat $lon" to VectorGreen
+        }
+        is LocationSourceState.Error -> "> GPS: ERR ${state.detail}" to Amber
+    }
 
 @Composable
 private fun transportChip(
@@ -329,19 +375,15 @@ private fun centerViewport(
                     )
                 drawPlayaMap(map = map, projection = projection, viewport = viewport)
             } else {
-                drawNoMapPlaceholder()
+                drawCircle(
+                    color = VectorGreen,
+                    radius = 6f,
+                    center = Offset(size.width / 2f, size.height / 2f),
+                    style = Stroke(width = 1f),
+                )
             }
         }
     }
-}
-
-private fun DrawScope.drawNoMapPlaceholder() {
-    drawCircle(
-        color = VectorGreen,
-        radius = 6f,
-        center = Offset(size.width / 2f, size.height / 2f),
-        style = Stroke(width = 1f),
-    )
 }
 
 @Composable
