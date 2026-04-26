@@ -2,9 +2,11 @@ package org.pureagave.zodiac.control.ui.viewmodel
 
 import org.pureagave.zodiac.control.core.connection.TransportType
 import org.pureagave.zodiac.control.core.model.VehicleCommand
+import org.pureagave.zodiac.control.core.sensor.LocationSourceType
 import org.pureagave.zodiac.control.data.TelemetryRepository
 import org.pureagave.zodiac.control.data.VehicleConnectionGateway
 import org.pureagave.zodiac.control.data.playa.PlayaMapRepository
+import org.pureagave.zodiac.control.data.sensor.RoutedLocationSource
 import org.pureagave.zodiac.control.ui.state.CockpitUiState
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -19,6 +21,7 @@ class CockpitViewModel(
     private val telemetryRepository: TelemetryRepository,
     private val vehicleGateway: VehicleConnectionGateway,
     private val playaMapRepository: PlayaMapRepository,
+    private val locationSource: RoutedLocationSource,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(CockpitUiState())
     val uiState: StateFlow<CockpitUiState> = _uiState.asStateFlow()
@@ -61,6 +64,22 @@ class CockpitViewModel(
                 _uiState.update { it.copy(playaMap = map) }
             }
         }
+
+        viewModelScope.launch { locationSource.start() }
+        viewModelScope.launch {
+            locationSource.selected.collect { type ->
+                _uiState.update { it.copy(selectedLocationSource = type) }
+            }
+        }
+        viewModelScope.launch {
+            locationSource.state.collect { state ->
+                _uiState.update { it.copy(locationState = state) }
+            }
+        }
+    }
+
+    fun selectLocationSource(type: LocationSourceType) {
+        viewModelScope.launch { locationSource.select(type) }
     }
 
     fun setHeading(headingDeg: Int) {
@@ -97,6 +116,7 @@ class CockpitViewModelFactory(
     private val telemetryRepository: TelemetryRepository,
     private val vehicleGateway: VehicleConnectionGateway,
     private val playaMapRepository: PlayaMapRepository,
+    private val locationSource: RoutedLocationSource,
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
@@ -105,6 +125,7 @@ class CockpitViewModelFactory(
                 telemetryRepository = telemetryRepository,
                 vehicleGateway = vehicleGateway,
                 playaMapRepository = playaMapRepository,
+                locationSource = locationSource,
             ) as T
         }
         error("Unknown ViewModel class: ${modelClass.name}")
