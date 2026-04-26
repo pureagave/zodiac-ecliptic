@@ -8,6 +8,8 @@ import org.pureagave.zodiac.control.data.TelemetryRepository
 import org.pureagave.zodiac.control.data.VehicleConnectionGateway
 import org.pureagave.zodiac.control.data.playa.AssetsPlayaMapRepository
 import org.pureagave.zodiac.control.data.playa.PlayaMapRepository
+import org.pureagave.zodiac.control.data.prefs.CockpitPreferences
+import org.pureagave.zodiac.control.data.prefs.DataStoreCockpitPreferences
 import org.pureagave.zodiac.control.data.sensor.BleLocationSource
 import org.pureagave.zodiac.control.data.sensor.FakeLocationSource
 import org.pureagave.zodiac.control.data.sensor.LocationSourceRegistry
@@ -17,6 +19,10 @@ import org.pureagave.zodiac.control.data.sensor.UsbLocationSource
 import org.pureagave.zodiac.control.data.transport.FakeTransportAdapter
 import org.pureagave.zodiac.control.data.transport.TransportRegistry
 import android.app.Application
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.preferencesDataStoreFile
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -53,6 +59,16 @@ class ZodiacApplication : Application() {
     }
 
     val playaMapRepository: PlayaMapRepository by lazy { AssetsPlayaMapRepository(assets) }
+
+    private val preferencesDataStore: DataStore<Preferences> by lazy {
+        PreferenceDataStoreFactory.create(scope = applicationScope) {
+            applicationContext.preferencesDataStoreFile("cockpit_prefs")
+        }
+    }
+
+    val preferences: CockpitPreferences by lazy {
+        DataStoreCockpitPreferences(preferencesDataStore)
+    }
 
     val locationSource: RoutedLocationSource by lazy {
         val registry =
