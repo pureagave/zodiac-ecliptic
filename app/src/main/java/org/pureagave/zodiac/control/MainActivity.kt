@@ -10,6 +10,7 @@ import org.pureagave.zodiac.control.data.sensor.FakeLocationSource
 import org.pureagave.zodiac.control.data.sensor.LocationSourceRegistry
 import org.pureagave.zodiac.control.data.sensor.RoutedLocationSource
 import org.pureagave.zodiac.control.data.sensor.SystemLocationSource
+import org.pureagave.zodiac.control.data.sensor.UsbLocationSource
 import org.pureagave.zodiac.control.data.transport.FakeTransportAdapter
 import org.pureagave.zodiac.control.data.transport.TransportRegistry
 import org.pureagave.zodiac.control.ui.viewmodel.CockpitViewModel
@@ -61,6 +62,10 @@ private fun zodiacApp() {
                             FakeLocationSource(scope = sensorScope),
                             SystemLocationSource(applicationContext = context.applicationContext),
                             BleLocationSource(
+                                applicationContext = context.applicationContext,
+                                scope = sensorScope,
+                            ),
+                            UsbLocationSource(
                                 applicationContext = context.applicationContext,
                                 scope = sensorScope,
                             ),
