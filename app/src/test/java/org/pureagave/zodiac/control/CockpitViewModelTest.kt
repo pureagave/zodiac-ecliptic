@@ -223,6 +223,8 @@ private class NoOpCockpitPreferences : CockpitPreferences {
     override suspend fun setTiltDeg(deg: Int) = Unit
 
     override suspend fun setPixelsPerMeter(zoom: Double) = Unit
+
+    override suspend fun setConcept(concept: org.pureagave.zodiac.control.core.model.CockpitConcept) = Unit
 }
 
 private class StaticTelemetryRepo : TelemetryRepository {

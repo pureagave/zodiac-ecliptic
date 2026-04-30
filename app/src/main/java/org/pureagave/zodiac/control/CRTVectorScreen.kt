@@ -10,6 +10,8 @@ import org.pureagave.zodiac.control.core.model.CockpitMode
 import org.pureagave.zodiac.control.core.model.MapMode
 import org.pureagave.zodiac.control.core.sensor.LocationSourceState
 import org.pureagave.zodiac.control.core.sensor.LocationSourceType
+import org.pureagave.zodiac.control.ui.concepts.ThemeCrtVector
+import org.pureagave.zodiac.control.ui.concepts.conceptSwitcher
 import org.pureagave.zodiac.control.ui.playamap.EGO_ANCHOR_CENTER
 import org.pureagave.zodiac.control.ui.playamap.cockpitTouchInput
 import org.pureagave.zodiac.control.ui.playamap.drawEgoMarker
@@ -64,7 +66,10 @@ private const val TILT_ZOOM_BOOST: Double = 1.0
 private val PLAYA_PROJECTION = PlayaProjection(GoldenSpike.Y2025)
 
 @Composable
-fun crtVectorScreen(viewModel: CockpitViewModel) {
+fun crtVectorScreen(
+    viewModel: CockpitViewModel,
+    onCycleConcept: () -> Unit = {},
+) {
     val state = viewModel.uiState.collectAsStateWithLifecycle().value
 
     Box(
@@ -123,6 +128,13 @@ fun crtVectorScreen(viewModel: CockpitViewModel) {
             fontSize = 15.sp,
             fontFamily = FontFamily.Monospace,
             modifier = Modifier.align(Alignment.TopStart).padding(8.dp),
+        )
+
+        conceptSwitcher(
+            current = state.concept,
+            onCycle = onCycleConcept,
+            accent = ThemeCrtVector.accent,
+            modifier = Modifier.align(Alignment.TopEnd).padding(8.dp),
         )
     }
 }

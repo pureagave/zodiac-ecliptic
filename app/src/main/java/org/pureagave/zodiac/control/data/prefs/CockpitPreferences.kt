@@ -1,5 +1,6 @@
 package org.pureagave.zodiac.control.data.prefs
 
+import org.pureagave.zodiac.control.core.model.CockpitConcept
 import org.pureagave.zodiac.control.core.model.MapMode
 import org.pureagave.zodiac.control.core.sensor.LocationSourceType
 import org.pureagave.zodiac.control.ui.state.CockpitUiState
@@ -14,6 +15,7 @@ data class CockpitPrefsSnapshot(
     val mapMode: MapMode,
     val tiltDeg: Int,
     val pixelsPerMeter: Double,
+    val concept: CockpitConcept,
 ) {
     companion object {
         val DEFAULT =
@@ -22,6 +24,7 @@ data class CockpitPrefsSnapshot(
                 mapMode = MapMode.TOP,
                 tiltDeg = CockpitUiState.DEFAULT_TILT_DEG,
                 pixelsPerMeter = DEFAULT_PIXELS_PER_METER,
+                concept = CockpitConcept.A,
             )
 
         const val DEFAULT_PIXELS_PER_METER: Double = 0.18
@@ -43,4 +46,6 @@ interface CockpitPreferences {
     suspend fun setTiltDeg(deg: Int)
 
     suspend fun setPixelsPerMeter(zoom: Double)
+
+    suspend fun setConcept(concept: CockpitConcept)
 }

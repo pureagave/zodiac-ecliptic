@@ -2,6 +2,7 @@ package org.pureagave.zodiac.control.ui.state
 
 import org.pureagave.zodiac.control.core.connection.ConnectionPhase
 import org.pureagave.zodiac.control.core.connection.TransportType
+import org.pureagave.zodiac.control.core.model.CockpitConcept
 import org.pureagave.zodiac.control.core.model.CockpitMode
 import org.pureagave.zodiac.control.core.model.MapMode
 import org.pureagave.zodiac.control.core.model.PlayaMap
@@ -27,6 +28,7 @@ data class CockpitUiState(
     val panEastM: Double = 0.0,
     val panNorthM: Double = 0.0,
     val mapLoadError: String? = null,
+    val concept: CockpitConcept = CockpitConcept.A,
 ) {
     companion object {
         const val DEFAULT_TILT_DEG: Int = 40
