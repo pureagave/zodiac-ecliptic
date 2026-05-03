@@ -20,6 +20,7 @@ import org.pureagave.zodiac.control.ui.playamap.drawEgoMarkerAt
 import org.pureagave.zodiac.control.ui.playamap.drawProjectedMap
 import org.pureagave.zodiac.control.ui.playamap.drawRetroGrid
 import org.pureagave.zodiac.control.ui.playamap.project
+import org.pureagave.zodiac.control.ui.scanlineOverlay
 import org.pureagave.zodiac.control.ui.state.CockpitUiState
 import org.pureagave.zodiac.control.ui.viewmodel.CockpitViewModel
 import org.pureagave.zodiac.control.ui.wrapHeading
@@ -96,7 +97,7 @@ fun crtVectorScreen(
                 .padding(12.dp)
                 .border(2.dp, VectorGreen),
     ) {
-        scanLineOverlay()
+        scanlineOverlay()
 
         Column(Modifier.fillMaxSize()) {
             topHeader(state = state)
@@ -642,21 +643,4 @@ private fun buildViewport(
         heightPx = heightPx,
         anchorYFrac = if (tilt) TILT_ANCHOR_Y else TOP_ANCHOR_Y,
     )
-}
-
-@Composable
-private fun scanLineOverlay() {
-    Canvas(Modifier.fillMaxSize()) {
-        val step = 4f
-        var y = 0f
-        while (y <= size.height) {
-            drawLine(
-                color = Color(0x1100FF66),
-                start = Offset(0f, y),
-                end = Offset(size.width, y),
-                strokeWidth = 1f,
-            )
-            y += step
-        }
-    }
 }
