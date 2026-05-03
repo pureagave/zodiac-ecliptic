@@ -20,6 +20,7 @@ import org.pureagave.zodiac.control.ui.playamap.drawEgoMarkerAt
 import org.pureagave.zodiac.control.ui.playamap.drawProjectedMap
 import org.pureagave.zodiac.control.ui.playamap.drawRetroGrid
 import org.pureagave.zodiac.control.ui.playamap.project
+import org.pureagave.zodiac.control.ui.playamap.projectRetroGrid
 import org.pureagave.zodiac.control.ui.scanlineOverlay
 import org.pureagave.zodiac.control.ui.state.CockpitUiState
 import org.pureagave.zodiac.control.ui.viewmodel.CockpitViewModel
@@ -551,6 +552,7 @@ private fun centerViewport(
             val map = state.playaMap
             if (map != null && viewport != null) map.project(projection, viewport) else null
         }
+    val retroGrid = rememberRetroGridPath(viewport)
 
     Box(
         modifier =
@@ -590,7 +592,7 @@ private fun centerViewport(
                 },
         ) {
             if (viewport == null) return@Canvas
-            if (tilt) drawRetroGrid(viewport)
+            if (tilt) drawRetroGrid(retroGrid)
             if (projected != null) {
                 drawProjectedMap(projected, org.pureagave.zodiac.control.ui.playamap.MapPalette.Default, viewport.pixelsPerMeter)
             } else {
@@ -643,4 +645,17 @@ private fun buildViewport(
         heightPx = heightPx,
         anchorYFrac = if (tilt) TILT_ANCHOR_Y else TOP_ANCHOR_Y,
     )
+}
+
+/**
+ * Cache the meter-space backdrop grid as a single Path keyed on the
+ * camera viewport. ~50 east/west ticks → one drawPath per frame instead
+ * of 102 drawLine calls. Returns an empty Path until the canvas is
+ * sized so the renderer can blit it unconditionally.
+ */
+@Composable
+private fun rememberRetroGridPath(viewport: PlayaViewport?): androidx.compose.ui.graphics.Path {
+    return remember(viewport) {
+        viewport?.let(::projectRetroGrid) ?: androidx.compose.ui.graphics.Path()
+    }
 }
