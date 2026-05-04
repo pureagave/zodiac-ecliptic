@@ -7,6 +7,7 @@ import org.pureagave.zodiac.control.core.geo.PlayaViewport
 import org.pureagave.zodiac.control.core.model.MapMode
 import org.pureagave.zodiac.control.core.model.PlayaMap
 import org.pureagave.zodiac.control.core.sensor.GpsFix
+import org.pureagave.zodiac.control.ui.playamap.LabelLayouts
 import org.pureagave.zodiac.control.ui.playamap.MapPalette
 import org.pureagave.zodiac.control.ui.playamap.ProjectedMap
 import org.pureagave.zodiac.control.ui.playamap.cockpitTouchInput
@@ -16,6 +17,7 @@ import org.pureagave.zodiac.control.ui.playamap.drawProjectedMap
 import org.pureagave.zodiac.control.ui.playamap.drawRetroGrid
 import org.pureagave.zodiac.control.ui.playamap.project
 import org.pureagave.zodiac.control.ui.playamap.projectRetroGrid
+import org.pureagave.zodiac.control.ui.playamap.rememberLabelLayouts
 import org.pureagave.zodiac.control.ui.state.CockpitUiState
 import org.pureagave.zodiac.control.ui.viewmodel.CockpitViewModel
 import androidx.compose.foundation.Canvas
@@ -196,6 +198,11 @@ fun playaMapPanel(
         }
 
     val retroGrid = rememberRetroGridPath(viewport)
+    // Pre-measure every label's glyphs once per (map, density). Cache
+    // survives camera changes and palette colour swaps; only invalidates
+    // when the underlying map or screen density changes (i.e. essentially
+    // never at runtime).
+    val labelLayouts = rememberLabelLayouts(inputs.playaMap, style.palette.labelsEnabled)
 
     Box(
         modifier =
@@ -226,6 +233,7 @@ fun playaMapPanel(
                 viewport = viewport,
                 projected = projected,
                 retroGrid = retroGrid,
+                labelLayouts = labelLayouts,
                 style = style,
                 tilt = tilt,
                 tiltDeg = inputs.tiltDeg,
@@ -292,6 +300,7 @@ private data class MapBaseInputs(
     val viewport: PlayaViewport?,
     val projected: ProjectedMap?,
     val retroGrid: Path,
+    val labelLayouts: LabelLayouts,
     val style: PlayaMapPanelStyle,
     val tilt: Boolean,
     val tiltDeg: Int,
@@ -317,8 +326,8 @@ private fun mapBaseCanvas(inputs: MapBaseInputs) {
         if (style.showRetroGrid || tilt) drawRetroGrid(inputs.retroGrid, style.palette.grid)
         val projected = inputs.projected
         if (projected != null) {
-            drawProjectedMap(projected, style.palette, viewport.pixelsPerMeter)
-            style.sweep?.let { drawSweptProjectedMap(projected, it, viewport.pixelsPerMeter) }
+            drawProjectedMap(projected, style.palette, inputs.labelLayouts, viewport.pixelsPerMeter)
+            style.sweep?.let { drawSweptProjectedMap(projected, it) }
         } else {
             drawCircle(
                 color = style.palette.fence,
@@ -384,7 +393,6 @@ private fun sweepArmCanvas(sweep: SweepOverlay) {
 private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawSweptProjectedMap(
     projected: ProjectedMap,
     sweep: SweepOverlay,
-    pixelsPerMeter: Double,
 ) {
     val cx = size.width / 2f
     val cy = size.height / 2f
@@ -398,7 +406,7 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawSweptProjectedM
             endDeg = sweep.sweepDeg,
         )
     clipPath(wedge) {
-        drawProjectedMap(projected, sweep.litPalette, pixelsPerMeter)
+        drawProjectedMap(projected, sweep.litPalette)
     }
 }
 

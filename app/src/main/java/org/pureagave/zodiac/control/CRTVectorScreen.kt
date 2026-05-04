@@ -22,6 +22,7 @@ import org.pureagave.zodiac.control.ui.playamap.drawProjectedMap
 import org.pureagave.zodiac.control.ui.playamap.drawRetroGrid
 import org.pureagave.zodiac.control.ui.playamap.project
 import org.pureagave.zodiac.control.ui.playamap.projectRetroGrid
+import org.pureagave.zodiac.control.ui.playamap.rememberLabelLayouts
 import org.pureagave.zodiac.control.ui.scanlineOverlay
 import org.pureagave.zodiac.control.ui.state.CockpitUiState
 import org.pureagave.zodiac.control.ui.viewmodel.CockpitViewModel
@@ -559,6 +560,8 @@ private fun centerViewport(
             if (map != null && viewport != null) map.project(projection, viewport) else null
         }
     val retroGrid = rememberRetroGridPath(viewport)
+    val palette = org.pureagave.zodiac.control.ui.playamap.MapPalette.Default
+    val labelLayouts = rememberLabelLayouts(inputs.playaMap, palette.labelsEnabled)
 
     Box(
         modifier =
@@ -600,7 +603,7 @@ private fun centerViewport(
             if (viewport == null) return@Canvas
             if (tilt) drawRetroGrid(retroGrid)
             if (projected != null) {
-                drawProjectedMap(projected, org.pureagave.zodiac.control.ui.playamap.MapPalette.Default, viewport.pixelsPerMeter)
+                drawProjectedMap(projected, palette, labelLayouts, viewport.pixelsPerMeter)
             } else {
                 drawCircle(
                     color = VectorGreen,
