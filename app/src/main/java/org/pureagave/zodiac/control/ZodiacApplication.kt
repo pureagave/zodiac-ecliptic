@@ -7,6 +7,7 @@ import org.pureagave.zodiac.control.data.RoutedVehicleGateway
 import org.pureagave.zodiac.control.data.TelemetryRepository
 import org.pureagave.zodiac.control.data.VehicleConnectionGateway
 import org.pureagave.zodiac.control.data.playa.AssetsPlayaMapRepository
+import org.pureagave.zodiac.control.data.playa.PlayaMapBinaryCache
 import org.pureagave.zodiac.control.data.playa.PlayaMapRepository
 import org.pureagave.zodiac.control.data.prefs.CockpitPreferences
 import org.pureagave.zodiac.control.data.prefs.DataStoreCockpitPreferences
@@ -58,7 +59,12 @@ class ZodiacApplication : Application() {
         )
     }
 
-    val playaMapRepository: PlayaMapRepository by lazy { AssetsPlayaMapRepository(assets) }
+    val playaMapRepository: PlayaMapRepository by lazy {
+        AssetsPlayaMapRepository(
+            assets = assets,
+            binaryCache = PlayaMapBinaryCache(cacheDir = cacheDir),
+        )
+    }
 
     private val preferencesDataStore: DataStore<Preferences> by lazy {
         PreferenceDataStoreFactory.create(scope = applicationScope) {
