@@ -1,5 +1,7 @@
 package org.pureagave.zodiac.control
 
+import org.pureagave.zodiac.control.burnin.BurnInConfig
+import org.pureagave.zodiac.control.burnin.BurnInConfigStore
 import org.pureagave.zodiac.control.burnin.BurnInMitigationManager
 import org.pureagave.zodiac.control.core.connection.TransportType
 import org.pureagave.zodiac.control.core.sensor.LocationSourceType
@@ -119,6 +121,12 @@ class ZodiacApplication : Application() {
             locationState = locationSource.state,
             connectionState = vehicleGateway.connectionState,
             scope = applicationScope,
+            configStore =
+                object : BurnInConfigStore {
+                    override suspend fun read(): BurnInConfig = preferences.readBurnInConfig()
+
+                    override suspend fun write(config: BurnInConfig) = preferences.setBurnInConfig(config)
+                },
         )
     }
 }
