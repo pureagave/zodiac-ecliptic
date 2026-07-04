@@ -5,7 +5,6 @@ import org.pureagave.zodiac.control.burnin.burnInScaffold
 import org.pureagave.zodiac.control.core.model.CockpitConcept
 import org.pureagave.zodiac.control.ui.concepts.instrumentBayScreen
 import org.pureagave.zodiac.control.ui.concepts.motionTrackerScreen
-import org.pureagave.zodiac.control.ui.concepts.perspectiveGridScreen
 import org.pureagave.zodiac.control.ui.ops.OPS_STRIP_HEIGHT_DP
 import org.pureagave.zodiac.control.ui.ops.opsStrip
 import org.pureagave.zodiac.control.ui.viewmodel.CockpitViewModel
@@ -42,7 +41,6 @@ fun cockpitScreen(
             Box(Modifier.fillMaxSize().padding(bottom = OPS_STRIP_HEIGHT_DP.dp)) {
                 when (concept) {
                     CockpitConcept.A -> crtVectorScreen(viewModel = viewModel, onCycleConcept = cycle)
-                    CockpitConcept.B -> perspectiveGridScreen(viewModel = viewModel, onCycleConcept = cycle)
                     CockpitConcept.C -> motionTrackerScreen(viewModel = viewModel, onCycleConcept = cycle)
                     CockpitConcept.D -> instrumentBayScreen(viewModel = viewModel, onCycleConcept = cycle)
                 }
