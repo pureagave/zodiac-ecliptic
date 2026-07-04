@@ -3,6 +3,7 @@ package org.pureagave.zodiac.control.ui.concepts
 import org.pureagave.zodiac.control.core.connection.ConnectionPhase
 import org.pureagave.zodiac.control.core.connection.TransportType
 import org.pureagave.zodiac.control.core.model.MapMode
+import org.pureagave.zodiac.control.core.ops.NavTarget
 import org.pureagave.zodiac.control.core.sensor.LocationSourceType
 import org.pureagave.zodiac.control.ui.state.CockpitUiState
 import org.pureagave.zodiac.control.ui.viewmodel.CockpitViewModel
@@ -69,6 +70,18 @@ fun conceptControlStrip(
                 fontFamily = FontFamily.Monospace,
                 fontSize = 11.sp,
             )
+        }
+
+        sectionLabel("> DRIVE TO", theme.primary)
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            NavTarget.entries.forEach { target ->
+                themedChip(
+                    label = target.label,
+                    selected = state.navTarget == target,
+                    theme = theme,
+                    onClick = { viewModel.setNavTarget(target) },
+                )
+            }
         }
 
         sectionLabel("> GPS", theme.primary)

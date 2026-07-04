@@ -13,6 +13,7 @@ import org.pureagave.zodiac.control.core.navigation.NavigationCue
 import org.pureagave.zodiac.control.core.navigation.PlayaCityModel
 import org.pureagave.zodiac.control.core.navigation.computeNavigationCue
 import org.pureagave.zodiac.control.core.navigation.toCityModel
+import org.pureagave.zodiac.control.core.ops.NavTarget
 import org.pureagave.zodiac.control.core.sensor.LocationSourceState
 import org.pureagave.zodiac.control.core.sensor.LocationSourceType
 import org.pureagave.zodiac.control.data.TelemetryRepository
@@ -344,6 +345,11 @@ class CockpitViewModel(
         val next = _uiState.value.concept.next()
         _uiState.update { it.copy(concept = next) }
         viewModelScope.launch { preferences.setConcept(next) }
+    }
+
+    /** Set the active "drive to" destination (HOME / MAN / TEMPLE). Session state. */
+    fun setNavTarget(target: NavTarget) {
+        _uiState.update { it.copy(navTarget = target) }
     }
 
     /**
