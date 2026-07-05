@@ -1,5 +1,6 @@
 package org.pureagave.zodiac.control.ui.concepts
 
+import org.pureagave.zodiac.control.ui.ops.driveToBar
 import org.pureagave.zodiac.control.ui.ops.opsReadout
 import org.pureagave.zodiac.control.ui.playamap.MapPalette
 import org.pureagave.zodiac.control.ui.playamap.MapPointStyle
@@ -168,6 +169,12 @@ fun instrumentBayScreen(
                 }
             }
 
+            driveToBar(
+                theme = theme,
+                active = state.navTarget,
+                onSelect = viewModel::setNavTarget,
+                modifier = Modifier.fillMaxWidth(),
+            )
             // Operational readout footer: BRC clock / sunrise-sunset / return-to-camp,
             // in the bay's tile aesthetic (replaced the decorative hazard chevron).
             opsReadout(

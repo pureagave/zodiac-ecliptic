@@ -1,5 +1,6 @@
 package org.pureagave.zodiac.control.ui.concepts
 
+import org.pureagave.zodiac.control.ui.ops.driveToBar
 import org.pureagave.zodiac.control.ui.ops.opsReadout
 import org.pureagave.zodiac.control.ui.playamap.MapPalette
 import org.pureagave.zodiac.control.ui.scanlineOverlay
@@ -222,6 +223,13 @@ fun motionTrackerScreen(
                 }
             }
 
+            Spacer(Modifier.height(6.dp))
+            driveToBar(
+                theme = theme,
+                active = state.navTarget,
+                onSelect = viewModel::setNavTarget,
+                modifier = Modifier.fillMaxWidth(),
+            )
             Spacer(Modifier.height(6.dp))
             opsReadout(
                 theme = theme,
