@@ -10,6 +10,7 @@ import org.pureagave.zodiac.control.core.model.MapMode
 import org.pureagave.zodiac.control.core.model.PlayaMap
 import org.pureagave.zodiac.control.core.navigation.NavigationCue
 import org.pureagave.zodiac.control.core.ops.NavTarget
+import org.pureagave.zodiac.control.core.ops.PlayaPoi
 import org.pureagave.zodiac.control.core.sensor.GpsFix
 import org.pureagave.zodiac.control.core.sensor.LocationSourceState
 import org.pureagave.zodiac.control.core.sensor.LocationSourceType
@@ -49,6 +50,12 @@ data class CockpitUiState(
     val navCue: NavigationCue = NavigationCue.Unknown,
     /** Active "drive to" destination — the ops readout guides to this (default HOME/camp). */
     val navTarget: NavTarget = NavTarget.HOME,
+    /**
+     * Playa-discovery points of interest (art + camps) from the offline-first
+     * [org.pureagave.zodiac.control.data.discovery.DiscoveryRepository]. Rendered
+     * as RADAR contacts / MAP markers; empty until the cache/first sync lands.
+     */
+    val pois: List<PlayaPoi> = emptyList(),
     /**
      * Short message describing the most recent failed vehicle command send
      * (SetHeading / SetSpeed), or null when the last send succeeded. Surfaced
