@@ -1,5 +1,6 @@
 package org.pureagave.zodiac.control.ui.concepts
 
+import org.pureagave.zodiac.control.ui.ops.driveSelectionOf
 import org.pureagave.zodiac.control.ui.ops.driveToBar
 import org.pureagave.zodiac.control.ui.ops.headingGuidanceBar
 import org.pureagave.zodiac.control.ui.ops.opsReadout
@@ -175,10 +176,10 @@ fun instrumentBayScreen(
 
             driveToBar(
                 theme = theme,
-                active = state.navTarget,
-                bathActive = state.driveToBath,
+                active = driveSelectionOf(state.customTarget != null, state.driveToBath, state.navTarget),
                 onSelect = viewModel::setNavTarget,
                 onSelectBath = viewModel::driveToNearestToilet,
+                onOpenAddress = { viewModel.setAddressEntryOpen(true) },
                 modifier = Modifier.fillMaxWidth(),
             )
             // Operational readout footer: BRC clock / sunrise-sunset / return-to-camp,

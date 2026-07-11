@@ -1,5 +1,6 @@
 package org.pureagave.zodiac.control.ui.concepts
 
+import org.pureagave.zodiac.control.ui.ops.driveSelectionOf
 import org.pureagave.zodiac.control.ui.ops.driveToBar
 import org.pureagave.zodiac.control.ui.ops.headingGuidanceBar
 import org.pureagave.zodiac.control.ui.ops.opsReadout
@@ -252,10 +253,10 @@ fun motionTrackerScreen(
             Spacer(Modifier.height(6.dp))
             driveToBar(
                 theme = theme,
-                active = state.navTarget,
-                bathActive = state.driveToBath,
+                active = driveSelectionOf(state.customTarget != null, state.driveToBath, state.navTarget),
                 onSelect = viewModel::setNavTarget,
                 onSelectBath = viewModel::driveToNearestToilet,
+                onOpenAddress = { viewModel.setAddressEntryOpen(true) },
                 modifier = Modifier.fillMaxWidth(),
             )
             Spacer(Modifier.height(6.dp))
