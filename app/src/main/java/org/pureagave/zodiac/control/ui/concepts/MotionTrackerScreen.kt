@@ -1,6 +1,7 @@
 package org.pureagave.zodiac.control.ui.concepts
 
 import org.pureagave.zodiac.control.ui.ops.driveToBar
+import org.pureagave.zodiac.control.ui.ops.headingGuidanceBar
 import org.pureagave.zodiac.control.ui.ops.opsReadout
 import org.pureagave.zodiac.control.ui.playamap.MapPalette
 import org.pureagave.zodiac.control.ui.scanlineOverlay
@@ -139,6 +140,19 @@ fun motionTrackerScreen(
 
             Spacer(Modifier.height(4.dp))
             navCueBar(cue = state.navCue, theme = theme)
+            Spacer(Modifier.height(4.dp))
+            headingGuidanceBar(
+                theme = theme,
+                egoFix = state.egoFix,
+                headingDeg = state.headingDeg,
+                target = state.activeDriveTarget,
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .height(56.dp)
+                        .border(1.dp, theme.primary)
+                        .padding(horizontal = 14.dp, vertical = 4.dp),
+            )
             Spacer(Modifier.height(4.dp))
 
             Row(Modifier.weight(1f)) {
