@@ -7,6 +7,7 @@ import org.pureagave.zodiac.control.ui.concepts.ThemeTracker
 import org.pureagave.zodiac.control.ui.concepts.instrumentBayScreen
 import org.pureagave.zodiac.control.ui.concepts.motionTrackerScreen
 import org.pureagave.zodiac.control.ui.ops.addressEntryPanel
+import org.pureagave.zodiac.control.ui.ops.passingCallout
 import org.pureagave.zodiac.control.ui.ops.streetCrossingPopup
 import org.pureagave.zodiac.control.ui.viewmodel.CockpitViewModel
 import androidx.compose.foundation.layout.Box
@@ -40,6 +41,7 @@ fun cockpitScreen(
                 CockpitConcept.MAP -> instrumentBayScreen(viewModel = viewModel, onCycleConcept = cycle)
             }
             state.streetPopup?.let { streetCrossingPopup(theme = ThemeTracker, name = it) }
+            state.passingCallout?.let { passingCallout(theme = ThemeTracker, name = it) }
             if (state.addressEntryOpen) {
                 addressEntryPanel(
                     theme = ThemeTracker,
