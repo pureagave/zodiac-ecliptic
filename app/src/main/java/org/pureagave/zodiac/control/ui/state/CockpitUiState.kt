@@ -3,6 +3,7 @@ package org.pureagave.zodiac.control.ui.state
 import org.pureagave.zodiac.control.core.connection.ConnectionPhase
 import org.pureagave.zodiac.control.core.connection.TransportType
 import org.pureagave.zodiac.control.core.geo.GoldenSpike
+import org.pureagave.zodiac.control.core.geo.LatLon
 import org.pureagave.zodiac.control.core.geo.PlayaPoint
 import org.pureagave.zodiac.control.core.geo.PlayaProjection
 import org.pureagave.zodiac.control.core.model.CockpitConcept
@@ -61,6 +62,20 @@ data class CockpitUiState(
      * re-resolves as the ego moves. Cleared whenever a preset is re-selected.
      */
     val driveToBath: Boolean = false,
+    /**
+     * Street-aware route to [activeDriveTarget] across the BRC polar grid, in
+     * playa metres (see `core/navigation/PlayaRouter`). Empty when there's no
+     * route (no fix / target / city model). Drawn on the map.
+     */
+    val routeWaypointsM: List<PlayaPoint> = emptyList(),
+    /**
+     * The next corner along [routeWaypointsM] the driver should steer toward —
+     * what the guidance chevron + ops arrow actually aim at (vs. the final
+     * destination, which the label/distance still refer to). Null = no route.
+     */
+    val nextWaypoint: LatLon? = null,
+    /** The clock street the route enters the city on (e.g. "2:30"), for display; null when free-drive. */
+    val entranceRadial: String? = null,
     /**
      * Playa-discovery points of interest (art + camps) from the offline-first
      * [org.pureagave.zodiac.control.data.discovery.DiscoveryRepository]. Rendered
