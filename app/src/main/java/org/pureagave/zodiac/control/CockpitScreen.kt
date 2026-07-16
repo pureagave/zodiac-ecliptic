@@ -4,6 +4,7 @@ import org.pureagave.zodiac.control.burnin.BurnInMitigationManager
 import org.pureagave.zodiac.control.burnin.burnInScaffold
 import org.pureagave.zodiac.control.core.model.CockpitConcept
 import org.pureagave.zodiac.control.ui.concepts.ThemeTracker
+import org.pureagave.zodiac.control.ui.concepts.driverNightScreen
 import org.pureagave.zodiac.control.ui.concepts.instrumentBayScreen
 import org.pureagave.zodiac.control.ui.concepts.motionTrackerScreen
 import org.pureagave.zodiac.control.ui.ops.addressEntryPanel
@@ -39,6 +40,7 @@ fun cockpitScreen(
             when (state.concept) {
                 CockpitConcept.RADAR -> motionTrackerScreen(viewModel = viewModel, onCycleConcept = cycle)
                 CockpitConcept.MAP -> instrumentBayScreen(viewModel = viewModel, onCycleConcept = cycle)
+                CockpitConcept.DRIVER -> driverNightScreen(viewModel = viewModel, onCycleConcept = cycle)
             }
             state.streetPopup?.let { streetCrossingPopup(theme = ThemeTracker, name = it) }
             state.passingCallout?.let { passingCallout(theme = ThemeTracker, name = it) }
