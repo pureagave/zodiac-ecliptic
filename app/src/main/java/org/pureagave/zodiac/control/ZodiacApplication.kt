@@ -19,6 +19,7 @@ import org.pureagave.zodiac.control.data.prefs.DataStoreCockpitPreferences
 import org.pureagave.zodiac.control.data.sensor.BleLocationSource
 import org.pureagave.zodiac.control.data.sensor.FakeLocationSource
 import org.pureagave.zodiac.control.data.sensor.LocationSourceRegistry
+import org.pureagave.zodiac.control.data.sensor.NetworkLocationSource
 import org.pureagave.zodiac.control.data.sensor.RoutedLocationSource
 import org.pureagave.zodiac.control.data.sensor.SystemLocationSource
 import org.pureagave.zodiac.control.data.sensor.UsbLocationSource
@@ -103,6 +104,7 @@ class ZodiacApplication : Application() {
                             applicationContext = this,
                             scope = applicationScope,
                         ),
+                        NetworkLocationSource(applicationContext = this, scope = applicationScope),
                     ),
             )
         RoutedLocationSource(
