@@ -1,5 +1,6 @@
 package org.pureagave.zodiac.control.data.sensor
 
+import org.pureagave.zodiac.control.core.sensor.GpsFix
 import org.pureagave.zodiac.control.core.sensor.LocationSourceState
 import org.pureagave.zodiac.control.core.sensor.LocationSourceType
 import org.pureagave.zodiac.control.data.sensor.nmea.NmeaParser
@@ -46,6 +47,12 @@ class NetworkLocationSource(
     private var job: Job? = null
     private var socket: DatagramSocket? = null
     private var multicastLock: WifiManager.MulticastLock? = null
+
+    // Telemetry arrives as separate sentences — position from GGA/RMC, compass
+    // heading from HDT — so we hold the latest of each and emit a merged fix.
+    @Volatile private var lastFix: GpsFix? = null
+
+    @Volatile private var lastHeadingDeg: Double? = null
 
     override suspend fun start() {
         job?.cancel()
@@ -128,13 +135,20 @@ class NetworkLocationSource(
         }
     }
 
-    /** Split a datagram into NMEA lines and parse each; a valid fix → [Active]. */
+    /**
+     * Split a datagram into NMEA lines and merge them: position from GGA/RMC,
+     * compass heading from HDT. Emits an [Active] fix whenever a position is
+     * known, preferring the compass heading over GPS course (the compass is
+     * valid when stopped; GPS course is not).
+     */
     private fun ingest(datagram: String) {
         datagram.split('\n').forEach { raw ->
             val line = raw.trim()
-            if (line.isNotEmpty()) {
-                NmeaParser.parse(line)?.let { _state.value = LocationSourceState.Active(it) }
-            }
+            if (line.isEmpty()) return@forEach
+            NmeaParser.parseHeadingDeg(line)?.let { lastHeadingDeg = it }
+            NmeaParser.parse(line)?.let { lastFix = it }
+            val fix = lastFix ?: return@forEach
+            _state.value = LocationSourceState.Active(fix.copy(headingDeg = lastHeadingDeg ?: fix.headingDeg))
         }
     }
 
