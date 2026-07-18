@@ -1,11 +1,5 @@
 package org.pureagave.zodiac.control.ui.concepts
 
-import org.pureagave.zodiac.control.R
-import org.pureagave.zodiac.control.core.geo.GoldenSpike
-import org.pureagave.zodiac.control.core.geo.PlayaProjection
-import org.pureagave.zodiac.control.core.ops.campGuidance
-import org.pureagave.zodiac.control.ui.state.CockpitUiState
-import org.pureagave.zodiac.control.ui.viewmodel.CockpitViewModel
 import android.graphics.Paint
 import android.graphics.Typeface
 import androidx.compose.foundation.Canvas
@@ -35,6 +29,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.res.ResourcesCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import org.pureagave.zodiac.control.R
+import org.pureagave.zodiac.control.core.geo.GoldenSpike
+import org.pureagave.zodiac.control.core.geo.PlayaProjection
+import org.pureagave.zodiac.control.core.ops.campGuidance
+import org.pureagave.zodiac.control.ui.state.CockpitUiState
+import org.pureagave.zodiac.control.ui.viewmodel.CockpitViewModel
 import kotlin.math.cos
 import kotlin.math.roundToInt
 import kotlin.math.sin

@@ -1,15 +1,15 @@
 package org.pureagave.zodiac.control.data.sensor
 
-import org.pureagave.zodiac.control.core.geo.GoldenSpike
-import org.pureagave.zodiac.control.core.geo.PlayaProjection
-import org.pureagave.zodiac.control.core.sensor.LocationSourceState
-import org.pureagave.zodiac.control.core.sensor.LocationSourceType
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.pureagave.zodiac.control.core.geo.GoldenSpike
+import org.pureagave.zodiac.control.core.geo.PlayaProjection
+import org.pureagave.zodiac.control.core.sensor.LocationSourceState
+import org.pureagave.zodiac.control.core.sensor.LocationSourceType
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class FakeLocationSourceTest {

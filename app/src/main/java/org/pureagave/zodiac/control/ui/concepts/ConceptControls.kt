@@ -1,12 +1,5 @@
 package org.pureagave.zodiac.control.ui.concepts
 
-import org.pureagave.zodiac.control.core.connection.ConnectionPhase
-import org.pureagave.zodiac.control.core.connection.TransportType
-import org.pureagave.zodiac.control.core.model.MapMode
-import org.pureagave.zodiac.control.core.sensor.LocationSourceType
-import org.pureagave.zodiac.control.ui.state.CockpitUiState
-import org.pureagave.zodiac.control.ui.viewmodel.CockpitViewModel
-import org.pureagave.zodiac.control.ui.wrapHeading
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -24,6 +17,13 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import org.pureagave.zodiac.control.core.connection.ConnectionPhase
+import org.pureagave.zodiac.control.core.connection.TransportType
+import org.pureagave.zodiac.control.core.model.MapMode
+import org.pureagave.zodiac.control.core.sensor.LocationSourceType
+import org.pureagave.zodiac.control.ui.state.CockpitUiState
+import org.pureagave.zodiac.control.ui.viewmodel.CockpitViewModel
+import org.pureagave.zodiac.control.ui.wrapHeading
 
 /**
  * One-stop driver controls (transport / GPS / heading / speed / recenter).

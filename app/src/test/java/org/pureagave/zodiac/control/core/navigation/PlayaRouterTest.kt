@@ -1,11 +1,11 @@
 package org.pureagave.zodiac.control.core.navigation
 
-import org.pureagave.zodiac.control.core.geo.PlayaPoint
-import org.pureagave.zodiac.control.core.model.StreetKind
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.pureagave.zodiac.control.core.geo.PlayaPoint
+import org.pureagave.zodiac.control.core.model.StreetKind
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.hypot

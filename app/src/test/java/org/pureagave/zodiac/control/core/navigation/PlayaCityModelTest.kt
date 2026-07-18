@@ -1,14 +1,14 @@
 package org.pureagave.zodiac.control.core.navigation
 
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Test
 import org.pureagave.zodiac.control.core.geo.LatLon
 import org.pureagave.zodiac.control.core.geo.PlayaProjection
 import org.pureagave.zodiac.control.core.model.PlayaMap
 import org.pureagave.zodiac.control.core.model.PolygonRing
 import org.pureagave.zodiac.control.core.model.StreetKind
 import org.pureagave.zodiac.control.core.model.StreetLine
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
-import org.junit.Test
 import kotlin.math.hypot
 
 class PlayaCityModelTest {

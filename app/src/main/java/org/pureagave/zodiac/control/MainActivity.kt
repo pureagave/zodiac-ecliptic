@@ -1,7 +1,5 @@
 package org.pureagave.zodiac.control
 
-import org.pureagave.zodiac.control.ui.viewmodel.CockpitViewModel
-import org.pureagave.zodiac.control.ui.viewmodel.CockpitViewModelFactory
 import android.Manifest
 import android.os.Build
 import android.os.Bundle
@@ -16,6 +14,8 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
+import org.pureagave.zodiac.control.ui.viewmodel.CockpitViewModel
+import org.pureagave.zodiac.control.ui.viewmodel.CockpitViewModelFactory
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

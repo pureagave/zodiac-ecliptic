@@ -1,13 +1,5 @@
 package org.pureagave.zodiac.control.ui.ops
 
-import org.pureagave.zodiac.control.core.geo.GoldenSpike
-import org.pureagave.zodiac.control.core.geo.LatLon
-import org.pureagave.zodiac.control.core.geo.PlayaProjection
-import org.pureagave.zodiac.control.core.ops.DriveTarget
-import org.pureagave.zodiac.control.core.ops.campGuidance
-import org.pureagave.zodiac.control.core.ops.relativeBearingDeg
-import org.pureagave.zodiac.control.core.sensor.GpsFix
-import org.pureagave.zodiac.control.ui.concepts.ConceptTheme
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -30,6 +22,14 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import org.pureagave.zodiac.control.core.geo.GoldenSpike
+import org.pureagave.zodiac.control.core.geo.LatLon
+import org.pureagave.zodiac.control.core.geo.PlayaProjection
+import org.pureagave.zodiac.control.core.ops.DriveTarget
+import org.pureagave.zodiac.control.core.ops.campGuidance
+import org.pureagave.zodiac.control.core.ops.relativeBearingDeg
+import org.pureagave.zodiac.control.core.sensor.GpsFix
+import org.pureagave.zodiac.control.ui.concepts.ConceptTheme
 import kotlin.math.abs
 import kotlin.math.roundToInt
 

@@ -1,7 +1,7 @@
 package org.pureagave.zodiac.control.data
 
-import org.pureagave.zodiac.control.core.model.Telemetry
 import kotlinx.coroutines.flow.Flow
+import org.pureagave.zodiac.control.core.model.Telemetry
 
 interface TelemetryRepository {
     fun stream(): Flow<Telemetry>

@@ -1,6 +1,5 @@
 package org.pureagave.zodiac.control.ui.ops
 
-import org.pureagave.zodiac.control.ui.concepts.ConceptTheme
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
@@ -17,6 +16,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import org.pureagave.zodiac.control.ui.concepts.ConceptTheme
 
 private val Backing = Color(0xCC000000)
 

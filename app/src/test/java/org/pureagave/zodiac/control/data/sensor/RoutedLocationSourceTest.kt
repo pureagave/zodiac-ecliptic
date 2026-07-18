@@ -1,9 +1,5 @@
 package org.pureagave.zodiac.control.data.sensor
 
-import org.pureagave.zodiac.control.core.geo.LatLon
-import org.pureagave.zodiac.control.core.sensor.GpsFix
-import org.pureagave.zodiac.control.core.sensor.LocationSourceState
-import org.pureagave.zodiac.control.core.sensor.LocationSourceType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
@@ -11,6 +7,10 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import org.pureagave.zodiac.control.core.geo.LatLon
+import org.pureagave.zodiac.control.core.sensor.GpsFix
+import org.pureagave.zodiac.control.core.sensor.LocationSourceState
+import org.pureagave.zodiac.control.core.sensor.LocationSourceType
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class RoutedLocationSourceTest {

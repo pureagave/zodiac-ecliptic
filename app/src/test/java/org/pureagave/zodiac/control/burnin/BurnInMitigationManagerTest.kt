@@ -1,11 +1,5 @@
 package org.pureagave.zodiac.control.burnin
 
-import org.pureagave.zodiac.control.core.geo.LatLon
-import org.pureagave.zodiac.control.core.sensor.GpsFix
-import org.pureagave.zodiac.control.core.sensor.LocationSourceState
-import org.pureagave.zodiac.control.core.sensor.LocationSourceType
-import org.pureagave.zodiac.control.data.FakeVehicleGateway
-import org.pureagave.zodiac.control.data.sensor.StubLocationSource
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -15,6 +9,12 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.pureagave.zodiac.control.core.geo.LatLon
+import org.pureagave.zodiac.control.core.sensor.GpsFix
+import org.pureagave.zodiac.control.core.sensor.LocationSourceState
+import org.pureagave.zodiac.control.core.sensor.LocationSourceType
+import org.pureagave.zodiac.control.data.FakeVehicleGateway
+import org.pureagave.zodiac.control.data.sensor.StubLocationSource
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class BurnInMitigationManagerTest {

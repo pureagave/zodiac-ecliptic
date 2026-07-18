@@ -1,13 +1,5 @@
 package org.pureagave.zodiac.control.ui.concepts
 
-import org.pureagave.zodiac.control.core.geo.LatLon
-import org.pureagave.zodiac.control.ui.ops.driveSelectionOf
-import org.pureagave.zodiac.control.ui.ops.driveToBar
-import org.pureagave.zodiac.control.ui.ops.headingGuidanceBar
-import org.pureagave.zodiac.control.ui.ops.opsReadout
-import org.pureagave.zodiac.control.ui.playamap.MapPalette
-import org.pureagave.zodiac.control.ui.scanlineOverlay
-import org.pureagave.zodiac.control.ui.viewmodel.CockpitViewModel
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -39,6 +31,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import org.pureagave.zodiac.control.core.geo.LatLon
+import org.pureagave.zodiac.control.ui.ops.driveSelectionOf
+import org.pureagave.zodiac.control.ui.ops.driveToBar
+import org.pureagave.zodiac.control.ui.ops.headingGuidanceBar
+import org.pureagave.zodiac.control.ui.ops.opsReadout
+import org.pureagave.zodiac.control.ui.playamap.MapPalette
+import org.pureagave.zodiac.control.ui.scanlineOverlay
+import org.pureagave.zodiac.control.ui.viewmodel.CockpitViewModel
 
 private const val SWEEP_PERIOD_S = 4f
 private const val SWEEP_WIDTH_DEG = 60f

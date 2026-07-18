@@ -1,8 +1,8 @@
 package org.pureagave.zodiac.control.data.sensor
 
+import kotlinx.coroutines.flow.StateFlow
 import org.pureagave.zodiac.control.core.sensor.LocationSourceState
 import org.pureagave.zodiac.control.core.sensor.LocationSourceType
-import kotlinx.coroutines.flow.StateFlow
 
 /**
  * Contract every GPS provider implements. Mirrors the

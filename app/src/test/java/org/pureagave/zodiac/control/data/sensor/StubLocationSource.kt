@@ -1,10 +1,10 @@
 package org.pureagave.zodiac.control.data.sensor
 
-import org.pureagave.zodiac.control.core.sensor.LocationSourceState
-import org.pureagave.zodiac.control.core.sensor.LocationSourceType
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import org.pureagave.zodiac.control.core.sensor.LocationSourceState
+import org.pureagave.zodiac.control.core.sensor.LocationSourceType
 
 /**
  * Test-only LocationSource that's purely state-driven — start/stop just write

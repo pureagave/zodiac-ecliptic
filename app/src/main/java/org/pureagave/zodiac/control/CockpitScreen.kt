@@ -1,5 +1,11 @@
 package org.pureagave.zodiac.control
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.pureagave.zodiac.control.burnin.BurnInMitigationManager
 import org.pureagave.zodiac.control.burnin.burnInScaffold
 import org.pureagave.zodiac.control.core.model.CockpitConcept
@@ -11,12 +17,6 @@ import org.pureagave.zodiac.control.ui.ops.addressEntryPanel
 import org.pureagave.zodiac.control.ui.ops.passingCallout
 import org.pureagave.zodiac.control.ui.ops.streetCrossingPopup
 import org.pureagave.zodiac.control.ui.viewmodel.CockpitViewModel
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.ui.Modifier
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 /**
  * Top-level dispatcher: reads the current [CockpitConcept] and renders the

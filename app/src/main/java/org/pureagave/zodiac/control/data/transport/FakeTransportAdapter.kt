@@ -1,13 +1,13 @@
 package org.pureagave.zodiac.control.data.transport
 
-import org.pureagave.zodiac.control.core.connection.ConnectionPhase
-import org.pureagave.zodiac.control.core.connection.ConnectionState
-import org.pureagave.zodiac.control.core.connection.TransportType
-import org.pureagave.zodiac.control.core.model.VehicleCommand
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import org.pureagave.zodiac.control.core.connection.ConnectionPhase
+import org.pureagave.zodiac.control.core.connection.ConnectionState
+import org.pureagave.zodiac.control.core.connection.TransportType
+import org.pureagave.zodiac.control.core.model.VehicleCommand
 
 class FakeTransportAdapter(
     override val type: TransportType,

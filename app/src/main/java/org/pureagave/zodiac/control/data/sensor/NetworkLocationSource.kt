@@ -1,9 +1,5 @@
 package org.pureagave.zodiac.control.data.sensor
 
-import org.pureagave.zodiac.control.core.sensor.GpsFix
-import org.pureagave.zodiac.control.core.sensor.LocationSourceState
-import org.pureagave.zodiac.control.core.sensor.LocationSourceType
-import org.pureagave.zodiac.control.data.sensor.nmea.NmeaParser
 import android.content.Context
 import android.net.wifi.WifiManager
 import kotlinx.coroutines.CoroutineScope
@@ -15,6 +11,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.pureagave.zodiac.control.core.sensor.GpsFix
+import org.pureagave.zodiac.control.core.sensor.LocationSourceState
+import org.pureagave.zodiac.control.core.sensor.LocationSourceType
+import org.pureagave.zodiac.control.data.sensor.nmea.NmeaParser
 import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetSocketAddress

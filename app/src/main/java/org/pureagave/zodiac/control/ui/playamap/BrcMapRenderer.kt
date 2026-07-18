@@ -1,9 +1,5 @@
 package org.pureagave.zodiac.control.ui.playamap
 
-import org.pureagave.zodiac.control.core.geo.PlayaPoint
-import org.pureagave.zodiac.control.core.geo.PlayaProjection
-import org.pureagave.zodiac.control.core.geo.PlayaViewport
-import org.pureagave.zodiac.control.core.model.PlayaMap
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -13,6 +9,10 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.lerp
+import org.pureagave.zodiac.control.core.geo.PlayaPoint
+import org.pureagave.zodiac.control.core.geo.PlayaProjection
+import org.pureagave.zodiac.control.core.geo.PlayaViewport
+import org.pureagave.zodiac.control.core.model.PlayaMap
 
 private val Fence = Color(0xFF00FF66)
 private val Street = Color(0xFF1F8F46)

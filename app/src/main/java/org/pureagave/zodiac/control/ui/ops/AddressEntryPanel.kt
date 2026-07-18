@@ -1,15 +1,5 @@
 package org.pureagave.zodiac.control.ui.ops
 
-import org.pureagave.zodiac.control.core.geo.GoldenSpike
-import org.pureagave.zodiac.control.core.geo.PlayaProjection
-import org.pureagave.zodiac.control.core.navigation.ClockTime
-import org.pureagave.zodiac.control.core.navigation.parseClockEntry
-import org.pureagave.zodiac.control.core.navigation.requiredClockDigits
-import org.pureagave.zodiac.control.core.ops.addressTarget
-import org.pureagave.zodiac.control.core.ops.campGuidance
-import org.pureagave.zodiac.control.core.sensor.GpsFix
-import org.pureagave.zodiac.control.ui.RetroFont
-import org.pureagave.zodiac.control.ui.concepts.ConceptTheme
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -38,6 +28,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
+import org.pureagave.zodiac.control.core.geo.GoldenSpike
+import org.pureagave.zodiac.control.core.geo.PlayaProjection
+import org.pureagave.zodiac.control.core.navigation.ClockTime
+import org.pureagave.zodiac.control.core.navigation.parseClockEntry
+import org.pureagave.zodiac.control.core.navigation.requiredClockDigits
+import org.pureagave.zodiac.control.core.ops.addressTarget
+import org.pureagave.zodiac.control.core.ops.campGuidance
+import org.pureagave.zodiac.control.core.sensor.GpsFix
+import org.pureagave.zodiac.control.ui.RetroFont
+import org.pureagave.zodiac.control.ui.concepts.ConceptTheme
 import kotlin.math.roundToInt
 
 private val Scrim = Color(0xE6000000)

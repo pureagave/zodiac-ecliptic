@@ -1,5 +1,7 @@
 package org.pureagave.zodiac.control.ui.playamap
 
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Path
 import org.pureagave.zodiac.control.core.geo.LatLon
 import org.pureagave.zodiac.control.core.geo.PlayaProjection
 import org.pureagave.zodiac.control.core.geo.PlayaViewport
@@ -7,8 +9,6 @@ import org.pureagave.zodiac.control.core.geo.projectInline
 import org.pureagave.zodiac.control.core.geo.toScreenInline
 import org.pureagave.zodiac.control.core.model.PlayaMap
 import org.pureagave.zodiac.control.core.model.StaticLabel
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Path
 
 /** A label site already projected to screen coordinates. */
 data class ProjectedLabel(

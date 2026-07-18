@@ -1,10 +1,10 @@
 package org.pureagave.zodiac.control.core.ops
 
-import org.pureagave.zodiac.control.core.geo.GoldenSpike
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Test
+import org.pureagave.zodiac.control.core.geo.GoldenSpike
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId

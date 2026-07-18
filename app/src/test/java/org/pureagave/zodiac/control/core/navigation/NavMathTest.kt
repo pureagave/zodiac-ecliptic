@@ -1,12 +1,12 @@
 package org.pureagave.zodiac.control.core.navigation
 
-import org.pureagave.zodiac.control.core.geo.PlayaPoint
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.pureagave.zodiac.control.core.geo.PlayaPoint
 
 class NavMathTest {
     @Test

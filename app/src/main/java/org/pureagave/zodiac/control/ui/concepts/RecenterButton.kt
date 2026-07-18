@@ -1,6 +1,5 @@
 package org.pureagave.zodiac.control.ui.concepts
 
-import org.pureagave.zodiac.control.core.model.FollowMode
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -14,6 +13,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
+import org.pureagave.zodiac.control.core.model.FollowMode
 
 /**
  * "Where am I" button — a triangular ego icon themed to the host concept.

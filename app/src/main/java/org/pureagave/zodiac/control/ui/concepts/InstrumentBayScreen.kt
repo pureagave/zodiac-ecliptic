@@ -1,14 +1,5 @@
 package org.pureagave.zodiac.control.ui.concepts
 
-import org.pureagave.zodiac.control.core.model.MapMode
-import org.pureagave.zodiac.control.ui.ops.driveSelectionOf
-import org.pureagave.zodiac.control.ui.ops.driveToBar
-import org.pureagave.zodiac.control.ui.ops.headingGuidanceBar
-import org.pureagave.zodiac.control.ui.ops.opsReadout
-import org.pureagave.zodiac.control.ui.playamap.MapPalette
-import org.pureagave.zodiac.control.ui.playamap.MapPointStyle
-import org.pureagave.zodiac.control.ui.state.CockpitUiState
-import org.pureagave.zodiac.control.ui.viewmodel.CockpitViewModel
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -39,6 +30,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import org.pureagave.zodiac.control.core.model.MapMode
+import org.pureagave.zodiac.control.ui.ops.driveSelectionOf
+import org.pureagave.zodiac.control.ui.ops.driveToBar
+import org.pureagave.zodiac.control.ui.ops.headingGuidanceBar
+import org.pureagave.zodiac.control.ui.ops.opsReadout
+import org.pureagave.zodiac.control.ui.playamap.MapPalette
+import org.pureagave.zodiac.control.ui.playamap.MapPointStyle
+import org.pureagave.zodiac.control.ui.state.CockpitUiState
+import org.pureagave.zodiac.control.ui.viewmodel.CockpitViewModel
 import kotlin.math.cos
 import kotlin.math.sin
 

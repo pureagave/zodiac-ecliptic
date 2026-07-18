@@ -1,5 +1,13 @@
 package org.pureagave.zodiac.control
 
+import android.app.Application
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.preferencesDataStoreFile
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import org.pureagave.zodiac.control.burnin.BurnInConfig
 import org.pureagave.zodiac.control.burnin.BurnInConfigStore
 import org.pureagave.zodiac.control.burnin.BurnInMitigationManager
@@ -25,14 +33,6 @@ import org.pureagave.zodiac.control.data.sensor.SystemLocationSource
 import org.pureagave.zodiac.control.data.sensor.UsbLocationSource
 import org.pureagave.zodiac.control.data.transport.FakeTransportAdapter
 import org.pureagave.zodiac.control.data.transport.TransportRegistry
-import android.app.Application
-import androidx.datastore.core.DataStore
-import androidx.datastore.preferences.core.PreferenceDataStoreFactory
-import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.preferencesDataStoreFile
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 
 /**
  * Process-lifetime owner for the cockpit's manual DI graph. Replaces the

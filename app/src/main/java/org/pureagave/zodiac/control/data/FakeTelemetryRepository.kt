@@ -1,10 +1,10 @@
 package org.pureagave.zodiac.control.data
 
-import org.pureagave.zodiac.control.core.model.CockpitMode
-import org.pureagave.zodiac.control.core.model.Telemetry
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import org.pureagave.zodiac.control.core.model.CockpitMode
+import org.pureagave.zodiac.control.core.model.Telemetry
 import kotlin.math.abs
 
 class FakeTelemetryRepository : TelemetryRepository {

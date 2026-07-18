@@ -1,10 +1,5 @@
 package org.pureagave.zodiac.control.burnin
 
-import org.pureagave.zodiac.control.core.connection.ConnectionPhase
-import org.pureagave.zodiac.control.core.connection.ConnectionState
-import org.pureagave.zodiac.control.core.geo.LatLon
-import org.pureagave.zodiac.control.core.sensor.GpsFix
-import org.pureagave.zodiac.control.core.sensor.LocationSourceState
 import android.os.SystemClock
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
@@ -13,6 +8,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import org.pureagave.zodiac.control.core.connection.ConnectionPhase
+import org.pureagave.zodiac.control.core.connection.ConnectionState
+import org.pureagave.zodiac.control.core.geo.LatLon
+import org.pureagave.zodiac.control.core.sensor.GpsFix
+import org.pureagave.zodiac.control.core.sensor.LocationSourceState
 import kotlin.math.cos
 import kotlin.math.hypot
 

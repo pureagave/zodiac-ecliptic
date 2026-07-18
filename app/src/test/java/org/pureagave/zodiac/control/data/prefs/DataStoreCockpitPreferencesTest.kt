@@ -1,9 +1,5 @@
 package org.pureagave.zodiac.control.data.prefs
 
-import org.pureagave.zodiac.control.burnin.BurnInConfig
-import org.pureagave.zodiac.control.core.model.CockpitConcept
-import org.pureagave.zodiac.control.core.model.MapMode
-import org.pureagave.zodiac.control.core.sensor.LocationSourceType
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
@@ -16,6 +12,10 @@ import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
+import org.pureagave.zodiac.control.burnin.BurnInConfig
+import org.pureagave.zodiac.control.core.model.CockpitConcept
+import org.pureagave.zodiac.control.core.model.MapMode
+import org.pureagave.zodiac.control.core.sensor.LocationSourceType
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class DataStoreCockpitPreferencesTest {

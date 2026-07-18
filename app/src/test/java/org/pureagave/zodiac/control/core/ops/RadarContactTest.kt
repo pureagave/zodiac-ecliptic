@@ -1,9 +1,9 @@
 package org.pureagave.zodiac.control.core.ops
 
-import org.pureagave.zodiac.control.core.geo.PlayaPoint
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.pureagave.zodiac.control.core.geo.PlayaPoint
 
 class RadarContactTest {
     private fun poi(

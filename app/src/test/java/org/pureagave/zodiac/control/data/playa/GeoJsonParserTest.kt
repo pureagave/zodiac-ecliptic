@@ -1,9 +1,9 @@
 package org.pureagave.zodiac.control.data.playa
 
-import org.pureagave.zodiac.control.core.model.StreetKind
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
+import org.pureagave.zodiac.control.core.model.StreetKind
 
 class GeoJsonParserTest {
     @Test

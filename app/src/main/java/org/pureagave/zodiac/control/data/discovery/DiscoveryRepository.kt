@@ -1,8 +1,5 @@
 package org.pureagave.zodiac.control.data.discovery
 
-import org.pureagave.zodiac.control.core.geo.PlayaPoint
-import org.pureagave.zodiac.control.core.ops.PlayaPoi
-import org.pureagave.zodiac.control.core.ops.PoiKind
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -12,6 +9,9 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
+import org.pureagave.zodiac.control.core.geo.PlayaPoint
+import org.pureagave.zodiac.control.core.ops.PlayaPoi
+import org.pureagave.zodiac.control.core.ops.PoiKind
 import java.io.File
 
 /**

@@ -1,17 +1,17 @@
 package org.pureagave.zodiac.control.transport
 
-import org.pureagave.zodiac.control.core.connection.ConnectionPhase
-import org.pureagave.zodiac.control.core.connection.TransportType
-import org.pureagave.zodiac.control.core.model.VehicleCommand
-import org.pureagave.zodiac.control.data.RoutedVehicleGateway
-import org.pureagave.zodiac.control.data.transport.FakeTransportAdapter
-import org.pureagave.zodiac.control.data.transport.TransportRegistry
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.pureagave.zodiac.control.core.connection.ConnectionPhase
+import org.pureagave.zodiac.control.core.connection.TransportType
+import org.pureagave.zodiac.control.core.model.VehicleCommand
+import org.pureagave.zodiac.control.data.RoutedVehicleGateway
+import org.pureagave.zodiac.control.data.transport.FakeTransportAdapter
+import org.pureagave.zodiac.control.data.transport.TransportRegistry
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class RoutedVehicleGatewayTest {

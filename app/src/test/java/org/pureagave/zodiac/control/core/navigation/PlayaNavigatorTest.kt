@@ -1,10 +1,10 @@
 package org.pureagave.zodiac.control.core.navigation
 
-import org.pureagave.zodiac.control.core.geo.PlayaPoint
-import org.pureagave.zodiac.control.core.model.StreetKind
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.pureagave.zodiac.control.core.geo.PlayaPoint
+import org.pureagave.zodiac.control.core.model.StreetKind
 
 /**
  * Synthetic city used by every test. Keeps the math hand-checkable:

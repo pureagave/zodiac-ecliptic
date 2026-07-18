@@ -1,6 +1,5 @@
 package org.pureagave.zodiac.control.data.playa
 
-import org.pureagave.zodiac.control.core.model.MapLoadResult
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
@@ -8,6 +7,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.pureagave.zodiac.control.core.model.MapLoadResult
 import java.io.IOException
 
 @OptIn(ExperimentalCoroutinesApi::class)

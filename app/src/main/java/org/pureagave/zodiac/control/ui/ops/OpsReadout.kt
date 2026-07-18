@@ -1,13 +1,5 @@
 package org.pureagave.zodiac.control.ui.ops
 
-import org.pureagave.zodiac.control.core.geo.GoldenSpike
-import org.pureagave.zodiac.control.core.geo.LatLon
-import org.pureagave.zodiac.control.core.geo.PlayaProjection
-import org.pureagave.zodiac.control.core.ops.DriveTarget
-import org.pureagave.zodiac.control.core.ops.campGuidance
-import org.pureagave.zodiac.control.core.ops.sunTimes
-import org.pureagave.zodiac.control.core.sensor.GpsFix
-import org.pureagave.zodiac.control.ui.concepts.ConceptTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -25,6 +17,14 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
+import org.pureagave.zodiac.control.core.geo.GoldenSpike
+import org.pureagave.zodiac.control.core.geo.LatLon
+import org.pureagave.zodiac.control.core.geo.PlayaProjection
+import org.pureagave.zodiac.control.core.ops.DriveTarget
+import org.pureagave.zodiac.control.core.ops.campGuidance
+import org.pureagave.zodiac.control.core.ops.sunTimes
+import org.pureagave.zodiac.control.core.sensor.GpsFix
+import org.pureagave.zodiac.control.ui.concepts.ConceptTheme
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZonedDateTime

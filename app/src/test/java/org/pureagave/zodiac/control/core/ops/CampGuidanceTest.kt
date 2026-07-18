@@ -1,11 +1,11 @@
 package org.pureagave.zodiac.control.core.ops
 
-import org.pureagave.zodiac.control.core.geo.GoldenSpike
-import org.pureagave.zodiac.control.core.geo.LatLon
-import org.pureagave.zodiac.control.core.geo.PlayaProjection
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.pureagave.zodiac.control.core.geo.GoldenSpike
+import org.pureagave.zodiac.control.core.geo.LatLon
+import org.pureagave.zodiac.control.core.geo.PlayaProjection
 
 class CampGuidanceTest {
     private val projection = PlayaProjection(GoldenSpike.Y2025)

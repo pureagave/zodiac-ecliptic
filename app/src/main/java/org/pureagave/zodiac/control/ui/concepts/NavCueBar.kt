@@ -1,7 +1,5 @@
 package org.pureagave.zodiac.control.ui.concepts
 
-import org.pureagave.zodiac.control.core.navigation.NavigationCue
-import org.pureagave.zodiac.control.ui.vectorText
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -20,6 +18,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import org.pureagave.zodiac.control.core.navigation.NavigationCue
+import org.pureagave.zodiac.control.ui.vectorText
 
 /**
  * Single-line navigation cue strip — drops into any concept's chrome and

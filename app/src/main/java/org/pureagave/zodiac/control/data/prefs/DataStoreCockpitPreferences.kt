@@ -1,10 +1,5 @@
 package org.pureagave.zodiac.control.data.prefs
 
-import org.pureagave.zodiac.control.burnin.BurnInConfig
-import org.pureagave.zodiac.control.core.model.CockpitConcept
-import org.pureagave.zodiac.control.core.model.MapMode
-import org.pureagave.zodiac.control.core.sensor.LocationSourceType
-import org.pureagave.zodiac.control.ui.state.CockpitUiState
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
@@ -15,6 +10,11 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import kotlinx.coroutines.flow.first
+import org.pureagave.zodiac.control.burnin.BurnInConfig
+import org.pureagave.zodiac.control.core.model.CockpitConcept
+import org.pureagave.zodiac.control.core.model.MapMode
+import org.pureagave.zodiac.control.core.sensor.LocationSourceType
+import org.pureagave.zodiac.control.ui.state.CockpitUiState
 
 /**
  * DataStore-backed implementation. Enums are stored by name so renaming an

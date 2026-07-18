@@ -1,13 +1,13 @@
 package org.pureagave.zodiac.control.data
 
-import org.pureagave.zodiac.control.core.model.CockpitMode
-import org.pureagave.zodiac.control.core.model.Telemetry
 import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.pureagave.zodiac.control.core.model.CockpitMode
+import org.pureagave.zodiac.control.core.model.Telemetry
 
 class FakeTelemetryRepositoryTest {
     @Test

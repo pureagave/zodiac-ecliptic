@@ -1,12 +1,12 @@
 package org.pureagave.zodiac.control.data.playa
 
+import org.json.JSONArray
+import org.json.JSONObject
 import org.pureagave.zodiac.control.core.geo.LatLon
 import org.pureagave.zodiac.control.core.model.PointFeature
 import org.pureagave.zodiac.control.core.model.PolygonRing
 import org.pureagave.zodiac.control.core.model.StreetKind
 import org.pureagave.zodiac.control.core.model.StreetLine
-import org.json.JSONArray
-import org.json.JSONObject
 
 /**
  * Minimal GeoJSON reader for the BRC Innovate dataset shape.

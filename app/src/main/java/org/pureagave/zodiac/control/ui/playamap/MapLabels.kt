@@ -1,6 +1,5 @@
 package org.pureagave.zodiac.control.ui.playamap
 
-import org.pureagave.zodiac.control.core.model.PlayaMap
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.remember
@@ -17,6 +16,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.sp
+import org.pureagave.zodiac.control.core.model.PlayaMap
 
 // Zoom thresholds (px/m) above which a layer's labels start drawing. Tuned
 // against the default city-fits-tablet zoom (~0.18) so an overview stays

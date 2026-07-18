@@ -1,11 +1,5 @@
 package org.pureagave.zodiac.control.data
 
-import org.pureagave.zodiac.control.core.connection.ConnectionPhase
-import org.pureagave.zodiac.control.core.connection.ConnectionState
-import org.pureagave.zodiac.control.core.connection.TransportType
-import org.pureagave.zodiac.control.core.model.VehicleCommand
-import org.pureagave.zodiac.control.data.transport.TransportAdapter
-import org.pureagave.zodiac.control.data.transport.TransportRegistry
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,6 +8,12 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
+import org.pureagave.zodiac.control.core.connection.ConnectionPhase
+import org.pureagave.zodiac.control.core.connection.ConnectionState
+import org.pureagave.zodiac.control.core.connection.TransportType
+import org.pureagave.zodiac.control.core.model.VehicleCommand
+import org.pureagave.zodiac.control.data.transport.TransportAdapter
+import org.pureagave.zodiac.control.data.transport.TransportRegistry
 
 /**
  * Routes vehicle commands to whichever [TransportAdapter] is currently

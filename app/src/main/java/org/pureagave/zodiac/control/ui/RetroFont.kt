@@ -1,11 +1,11 @@
 package org.pureagave.zodiac.control.ui
 
-import org.pureagave.zodiac.control.R
 import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
+import org.pureagave.zodiac.control.R
 
 /**
  * Orbitron — a geometric retro-futurism typeface (SIL OFL, see
