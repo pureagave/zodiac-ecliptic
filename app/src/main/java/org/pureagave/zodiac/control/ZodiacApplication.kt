@@ -14,6 +14,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import org.pureagave.zodiac.control.burnin.BurnInConfig
 import org.pureagave.zodiac.control.burnin.BurnInConfigStore
+import org.pureagave.zodiac.control.burnin.BurnInDeviceProfile
 import org.pureagave.zodiac.control.burnin.BurnInMitigationManager
 import org.pureagave.zodiac.control.core.connection.TransportType
 import org.pureagave.zodiac.control.core.geo.GoldenSpike
@@ -195,7 +196,11 @@ class ZodiacApplication : Application() {
     val displayRole: DisplayRoleStore by lazy {
         DisplayRoleStore(
             scope = applicationScope,
-            read = { preferences.read().passengerMode },
+            // Same hardware signal as nav authority (MainActivity): non-OLED
+            // (Amazon/Fire) = follower = passenger display by default. The
+            // operator long-press writes an explicit override that wins.
+            deviceDefault = !BurnInDeviceProfile.visualModulationSupported(),
+            read = { preferences.read().passengerModeOverride },
             write = { preferences.setPassengerMode(it) },
         )
     }

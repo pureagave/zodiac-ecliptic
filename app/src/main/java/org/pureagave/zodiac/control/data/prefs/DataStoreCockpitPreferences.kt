@@ -41,7 +41,11 @@ class DataStoreCockpitPreferences(
                 (prefs[KEY_PIXELS_PER_METER] ?: default.pixelsPerMeter)
                     .coerceIn(MIN_ZOOM, MAX_ZOOM),
             concept = prefs[KEY_CONCEPT]?.toConceptOrNull() ?: default.concept,
-            passengerMode = prefs[KEY_PASSENGER_MODE] ?: default.passengerMode,
+            // No `?: default` fallback: absence must surface as null (never
+            // toggled), distinct from a persisted false. This is the
+            // load-bearing line of the passenger-mode tri-state — see
+            // DisplayRoleStore's KDoc for the full contract.
+            passengerModeOverride = prefs[KEY_PASSENGER_MODE],
         )
     }
 

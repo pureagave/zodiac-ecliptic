@@ -238,6 +238,29 @@ class DataStoreCockpitPreferencesTest {
         PreferenceDataStoreFactory.create(scope = this.backgroundScope) { tmp.newFile("prefs_${nextFileId++}.preferences_pb") }
 
     @Test
+    fun passenger_override_is_null_when_unwritten() =
+        runTest(UnconfinedTestDispatcher()) {
+            val prefs = newPrefs()
+
+            assertEquals(null, prefs.read().passengerModeOverride)
+        }
+
+    @Test
+    fun passenger_override_round_trips_true_and_false() =
+        runTest(UnconfinedTestDispatcher()) {
+            val prefs = newPrefs()
+
+            prefs.setPassengerMode(true)
+            assertEquals(true, prefs.read().passengerModeOverride)
+
+            // The false-vs-null distinction is the whole tri-state: a plain
+            // boolean-with-default implementation can round-trip true but
+            // cannot represent false distinctly from "unwritten".
+            prefs.setPassengerMode(false)
+            assertEquals(false, prefs.read().passengerModeOverride)
+        }
+
+    @Test
     fun nav_share_seq_defaults_to_zero_and_round_trips() =
         runTest(UnconfinedTestDispatcher()) {
             val prefs = newPrefs()
