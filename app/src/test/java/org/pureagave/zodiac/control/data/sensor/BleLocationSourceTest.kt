@@ -4,11 +4,13 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestDispatcher
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -106,25 +108,181 @@ class BleLocationSourceTest {
             )
         }
 
+    // --- Error is no longer terminal: the listener retries on a capped backoff
+    // and self-heals, the same fix NetworkLocationSource got (AUDIT-2026-08-10)
+    // and BLE had been missing. A Fire has no GNSS, so a BLE receiver going away
+    // and never being retried is no position at all until a manual re-select. ---
+
     @Test
-    fun start_after_the_listener_died_reconnects() =
+    fun adapter_coming_back_reconnects_automatically_without_a_restart() =
         runTestOnOneDispatcher { dispatcher ->
-            // The idempotence guard must key off a *live* job, not a "started"
-            // flag: a listener that ended (adapter off, receiver unplugged) has
-            // to be retryable, or one bad attempt wedges the source until the
-            // process restarts.
+            // Mutation: restore the old terminal path (set Error and return out
+            // of runConnection). The adapter comes back on and nothing ever
+            // reconnects, because no second start() is issued here.
             val handle = FakeSppHandle(adapterOn = false)
-            val source = source(handle, dispatcher)
+            val source =
+                BleLocationSource(
+                    handle = handle,
+                    scope = backgroundScope,
+                    ioDispatcher = dispatcher,
+                    nowMs = { testScheduler.currentTime },
+                    retryBaseMs = 1_000L,
+                    retryMaxMs = 4_000L,
+                )
             source.start()
             runCurrent()
-            assertTrue(source.state.value is LocationSourceState.Error)
-            assertEquals(0, handle.links.size)
+            assertTrue("adapter off must surface as Error, honestly", source.state.value is LocationSourceState.Error)
+            assertEquals("no link opened while the adapter is off", 0, handle.links.size)
+
+            // Operator flips Bluetooth back on; the next backoff tick reconnects
+            // on its own -- crucially, NO second start() is called.
+            handle.adapterOn = true
+            advanceTimeBy(1_000L)
+            runCurrent()
+            assertEquals("the retry loop must reconnect by itself", 1, handle.links.size)
+
+            handle.links[0].deliver(validGga)
+            runCurrent()
+            assertTrue(
+                "a fix delivered after the auto-reconnect must go Active; state=${source.state.value}",
+                source.state.value is LocationSourceState.Active,
+            )
+        }
+
+    @Test
+    fun a_failed_connect_retries_and_recovers_on_a_later_attempt() =
+        runTestOnOneDispatcher { dispatcher ->
+            // A connect that throws (receiver out of range) used to end the
+            // listener for good. The link comes back into range; the next
+            // attempt must connect. Mutation: terminal-return on the catch.
+            val handle = FakeSppHandle(connectFailure = IOException("read failed, socket might closed"))
+            val source =
+                BleLocationSource(
+                    handle = handle,
+                    scope = backgroundScope,
+                    ioDispatcher = dispatcher,
+                    nowMs = { testScheduler.currentTime },
+                    retryBaseMs = 1_000L,
+                    retryMaxMs = 4_000L,
+                )
+            source.start()
+            runCurrent()
+            assertTrue("the first connect fails, honestly Error", source.state.value is LocationSourceState.Error)
+            assertEquals(1, handle.links.size)
+            assertTrue("the failed link must be released before the retry", handle.links[0].isClosed)
+
+            handle.connectFailure = null // receiver back in range
+            advanceTimeBy(1_000L)
+            runCurrent()
+            assertEquals("a second attempt must open a fresh link after the backoff", 2, handle.links.size)
+
+            handle.links[1].deliver(validGga)
+            runCurrent()
+            assertTrue(source.state.value is LocationSourceState.Active)
+        }
+
+    @Test
+    fun the_retry_backoff_doubles_and_is_capped() =
+        runTestOnOneDispatcher { dispatcher ->
+            // Mutation: make the backoff constant (return retryBaseMs) or uncap
+            // it. Asserted through the injected wait seam, so it's exact and not
+            // load-sensitive. Every attempt fails fast (adapter off), so the six
+            // waits are recorded synchronously before the loop parks.
+            val waits = mutableListOf<Long>()
+            val handle = FakeSppHandle(adapterOn = false)
+            val source =
+                BleLocationSource(
+                    handle = handle,
+                    scope = backgroundScope,
+                    ioDispatcher = dispatcher,
+                    nowMs = { testScheduler.currentTime },
+                    retryBaseMs = 100L,
+                    retryMaxMs = 400L,
+                    backoffWait = { ms ->
+                        waits += ms
+                        if (waits.size >= 6) awaitCancellation()
+                    },
+                )
+            source.start()
+            runCurrent()
+
+            assertEquals(
+                "backoff must double from the base and clamp at the ceiling",
+                listOf(100L, 200L, 400L, 400L, 400L, 400L),
+                waits,
+            )
+        }
+
+    @Test
+    fun stop_during_a_retry_backoff_returns_disconnected_and_makes_no_further_attempt() =
+        runTestOnOneDispatcher { dispatcher ->
+            // Mutation: a non-cancellable backoff (Thread.sleep(it)) makes
+            // stop()'s join wait out the full delay -- switching GPS source in
+            // the cab would hang RoutedLocationSource's select() mutex. The
+            // default (real delay) is cancelled instantly by stop().
+            val handle = FakeSppHandle(adapterOn = false)
+            val source =
+                BleLocationSource(
+                    handle = handle,
+                    scope = backgroundScope,
+                    ioDispatcher = dispatcher,
+                    nowMs = { testScheduler.currentTime },
+                    retryBaseMs = 60_000L,
+                    retryMaxMs = 60_000L,
+                )
+            source.start()
+            runCurrent()
+            assertTrue("precondition: parked in the backoff after a failed attempt", source.state.value is LocationSourceState.Error)
+
+            source.stop()
+
+            assertSame(LocationSourceState.Disconnected, source.state.value)
+            assertEquals("stop() during a backoff must make no further connect attempt", 0, handle.links.size)
+        }
+
+    @Test
+    fun a_working_session_that_drops_reconnects_at_the_base_interval_not_the_grown_one() =
+        runTestOnOneDispatcher { dispatcher ->
+            // Mutation: drop `if (result.received) failures = 0`. Two early
+            // failures grow the backoff; a receiver that then connects, streams,
+            // and drops must reset it so recovery is quick -- not make the driver
+            // wait out a backoff earned by an outage that is already over.
+            val handle = FakeSppHandle(adapterOn = false)
+            val source =
+                BleLocationSource(
+                    handle = handle,
+                    scope = backgroundScope,
+                    ioDispatcher = dispatcher,
+                    nowMs = { testScheduler.currentTime },
+                    staleMs = 60_000L,
+                    retryBaseMs = 100L,
+                    retryMaxMs = 100_000L,
+                )
+            source.start()
+            runCurrent() // attempt 1: adapter off -> wait 100
+            advanceTimeBy(100L)
+            runCurrent() // attempt 2: adapter off -> wait 200
+            assertEquals("no link while the adapter is off", 0, handle.links.size)
 
             handle.adapterOn = true
-            source.start()
+            advanceTimeBy(200L)
+            runCurrent() // attempt 3: connects
+            assertEquals(1, handle.links.size)
+            handle.links[0].deliver(validGga)
             runCurrent()
+            assertTrue("precondition: a working session", source.state.value is LocationSourceState.Active)
 
-            assertEquals("a dead listener must not block a retry", 1, handle.links.size)
+            // The working session ends -> failures reset -> the next backoff is
+            // the base 100 ms, NOT the grown 400 ms two prior failures earned.
+            handle.links[0].endStream()
+            runCurrent()
+            advanceTimeBy(100L)
+            runCurrent()
+            assertEquals(
+                "a dropped-but-previously-working link must retry at the base interval, not the grown one",
+                2,
+                handle.links.size,
+            )
         }
 
     @Test
@@ -413,7 +571,9 @@ private class FakeSppHandle(
     private val permission: Boolean = true,
     var adapterOn: Boolean = true,
     private val paired: List<String> = listOf("Garmin GLO 1234"),
-    private val connectFailure: Exception? = null,
+    // var, not val: a test flips a failing connect back to succeeding to model a
+    // receiver returning to range between retry attempts.
+    var connectFailure: Exception? = null,
     private val readDelayMs: Long? = null,
 ) : BluetoothSppHandle {
     val links = mutableListOf<FakeSppLink>()

@@ -144,6 +144,13 @@ private class AndroidBluetoothSppLink(
  * see [start] and [stop]. The selector chip is tappable as fast as a finger
  * moves and `CockpitViewModel` re-selects the persisted source on launch, so
  * both are entered redundantly in normal use.
+ *
+ * **The connection self-heals.** An [LocationSourceState.Error] used to be
+ * terminal — one adapter-off, unpaired-receiver or out-of-range connect ended
+ * the listener for good. It now retries on a capped exponential backoff (see
+ * [runConnection]), the same recovery [NetworkLocationSource] got and that BLE
+ * had been missing, so flipping Bluetooth back on or a receiver returning to
+ * range recovers without a re-select.
  */
 class BleLocationSource(
     private val handle: BluetoothSppHandle,
@@ -155,6 +162,13 @@ class BleLocationSource(
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val staleMs: Long = FixFreshness.STALE_MS,
     nowMs: () -> Long = { System.nanoTime() / NANOS_PER_MS },
+    private val retryBaseMs: Long = RETRY_BASE_MS,
+    private val retryMaxMs: Long = RETRY_MAX_MS,
+    // Seam for the retry backoff wait, mirroring NetworkLocationSource: tests
+    // record the requested delays (asserting the policy exactly) or park the
+    // loop. The default must stay a real `delay` so a stop() during a backoff
+    // cancels it promptly instead of parking a thread.
+    private val backoffWait: suspend (Long) -> Unit = { delay(it) },
 ) : LocationSource {
     constructor(
         applicationContext: Context,
@@ -233,66 +247,136 @@ class BleLocationSource(
         _state.value = LocationSourceState.Disconnected
     }
 
-    // Broad catch is deliberate: any radio/permission/IO failure must surface
-    // as an Error state, never crash the IO coroutine.
-    @Suppress("TooGenericExceptionCaught")
+    /**
+     * Own the link for as long as the job lives: connect and read, and when
+     * that ends for any reason short of a [stop], back off and try again.
+     *
+     * The Error state used to be **terminal** — an adapter toggled off, no
+     * paired receiver yet, a connect that failed out of range, or a receiver
+     * that powered off all ended the listener for good, and the source stayed
+     * Error until the operator re-selected it. [NetworkLocationSource] got this
+     * exact fix (AUDIT-2026-08-10); BLE had the identical shape and did not.
+     * Now the attempt *count* is unbounded (the receiver may return in ten
+     * seconds or an hour), while the *cost* is bounded: one link at a time
+     * ([attemptConnection]'s `finally` closes each before the next opens) and a
+     * wait that grows to [retryMaxMs] so an all-night outage costs a couple of
+     * connects a minute rather than a spin.
+     */
     private suspend fun runConnection(connectionScope: CoroutineScope) {
+        var failures = 0
+        while (connectionScope.isActive) {
+            val result = attemptConnection(connectionScope)
+            if (result.reason == ConnEnd.STOPPED) return
+            // Only a session that actually read NMEA counts as progress:
+            // resetting on a bare connect would let a receiver that drops the
+            // instant it links up retry at the base interval forever.
+            if (result.received) failures = 0
+            failures++
+            backoffWait(backoffDelayMs(failures))
+        }
+    }
+
+    /**
+     * Resolve the paired receiver to connect to, or set the matching Error and
+     * return null: the adapter must be on and a paired name must match
+     * [deviceNamePattern]. Extracted from [attemptConnection] to keep its return
+     * count within bounds and the connect path readable as one idea.
+     */
+    private fun resolveTargetDevice(): String? {
+        if (!handle.isAdapterEnabled()) {
+            _state.value = LocationSourceState.Error(ADAPTER_OFF_MSG, LocationSourceError.ADAPTER_UNAVAILABLE)
+            return null
+        }
+        val paired = handle.pairedDeviceNames()
+        val match = matchGpsDeviceName(paired, deviceNamePattern)
+        if (match == null) {
+            // Say what IS paired — "no device matched" alone leaves the operator
+            // unable to tell an unpaired receiver from one named something we
+            // didn't anticipate. See noGpsDeviceMessage.
+            _state.value = LocationSourceState.Error(noGpsDeviceMessage(paired), LocationSourceError.NO_DEVICE_FOUND)
+            return null
+        }
+        Timber.i("gps: BLE selected '%s' of %d paired", match, paired.size)
+        return match
+    }
+
+    /**
+     * One connect-and-read attempt. Returns why it ended and whether it read
+     * any NMEA (the backoff-reset signal). Always releases the link it opened:
+     * a failed connect, an ended stream and cancellation all used to be able to
+     * leave the SPP socket open, and Android will not hand out a second link to
+     * the same device until the first is closed.
+     *
+     * Broad catch is deliberate: any radio/permission/IO failure must surface
+     * as an Error state and a retry, never crash the IO coroutine.
+     */
+    @Suppress("TooGenericExceptionCaught")
+    private suspend fun attemptConnection(connectionScope: CoroutineScope): ConnResult {
+        val match = resolveTargetDevice() ?: return ConnResult(ConnEnd.FAILED, received = false)
         var opened: BluetoothSppLink? = null
         try {
-            if (!handle.isAdapterEnabled()) {
-                _state.value = LocationSourceState.Error(ADAPTER_OFF_MSG, LocationSourceError.ADAPTER_UNAVAILABLE)
-                return
-            }
-            val paired = handle.pairedDeviceNames()
-            val match = matchGpsDeviceName(paired, deviceNamePattern)
-            if (match == null) {
-                // Say what IS paired — "no device matched" alone leaves the
-                // operator unable to tell an unpaired receiver from one named
-                // something we didn't anticipate. See noGpsDeviceMessage.
-                _state.value =
-                    LocationSourceState.Error(
-                        noGpsDeviceMessage(paired),
-                        LocationSourceError.NO_DEVICE_FOUND,
-                    )
-                return
-            }
-            Timber.i("gps: BLE selected '%s' of %d paired", match, paired.size)
             val fresh = handle.createLink(match)
             opened = fresh
             // Published before connect() so stop() can abort a connect that is
             // blocked on an out-of-range receiver.
             link = fresh
             fresh.connect()
-            pumpNmea(fresh, connectionScope)
+            // Connected, nothing read yet: a re-attempt after an Error must read
+            // Searching, never re-assert a fix it hasn't seen. An already-Active
+            // fix inside its staleness window is left to the freshness watchdog.
+            if (_state.value !is LocationSourceState.Active) _state.value = LocationSourceState.Searching
+            val received = pumpNmea(fresh, connectionScope)
+            return if (connectionScope.isActive) ConnResult(ConnEnd.ENDED, received) else ConnResult(ConnEnd.STOPPED, received)
         } catch (ex: Exception) {
             // A read/close throwing after stop() cancelled this job is a normal
             // shutdown, not an error — stop() already set Disconnected.
-            if (connectionScope.isActive) {
+            return if (connectionScope.isActive) {
                 _state.value = LocationSourceState.Error("BT: ${ex.message}", LocationSourceError.IO_ERROR)
+                ConnResult(ConnEnd.FAILED, received = false, detail = ex.message)
+            } else {
+                ConnResult(ConnEnd.STOPPED, received = false)
             }
         } finally {
-            // Every exit path releases the socket: a failed connect, a receiver
-            // that ended the stream, and cancellation all used to leave the SPP
-            // link open, and Android will not hand out a second one to the same
-            // device — so one failed attempt made the source unusable until the
-            // process restarted.
             runCatching { opened?.close() }
             if (link === opened) link = null
         }
     }
 
+    /** Read NMEA until the stream ends or the job is cancelled; returns whether any line arrived. */
     private suspend fun pumpNmea(
         sppLink: BluetoothSppLink,
         connectionScope: CoroutineScope,
-    ) {
+    ): Boolean {
+        var received = false
         while (connectionScope.isActive) {
             val line = sppLink.readLine() ?: break
+            received = true
             NmeaParser.parse(line)?.let {
                 freshness.onFix()
                 _state.value = LocationSourceState.Active(it)
             }
         }
+        return received
     }
+
+    /**
+     * Exponential backoff, capped: [retryBaseMs] × 2^(failures−1), never above
+     * [retryMaxMs]. Same policy and reasoning as [NetworkLocationSource]'s.
+     */
+    private fun backoffDelayMs(failures: Int): Long {
+        val shift = (failures - 1).coerceIn(0, BACKOFF_MAX_SHIFT)
+        val grown = retryBaseMs shl shift
+        return grown.coerceIn(retryBaseMs, maxOf(retryBaseMs, retryMaxMs))
+    }
+
+    private enum class ConnEnd { STOPPED, ENDED, FAILED }
+
+    /** Why [attemptConnection] returned, and whether it read any NMEA while it ran. */
+    private data class ConnResult(
+        val reason: ConnEnd,
+        val received: Boolean,
+        val detail: String? = null,
+    )
 
     companion object {
         val SPP_UUID: UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
@@ -301,5 +385,14 @@ class BleLocationSource(
         private const val NANOS_PER_MS: Long = 1_000_000L
         private const val MISSING_PERMISSION_MSG: String = "BLUETOOTH_CONNECT not granted"
         private const val ADAPTER_OFF_MSG: String = "Bluetooth adapter unavailable or off"
+
+        /** First retry after a failed attempt — short enough a momentary radio blip heals unnoticed. */
+        private const val RETRY_BASE_MS: Long = 1_000L
+
+        /** Ceiling on the backoff, i.e. the worst-case blindness after the receiver returns. */
+        private const val RETRY_MAX_MS: Long = 30_000L
+
+        /** Caps the shift in [backoffDelayMs] well short of Long overflow. */
+        private const val BACKOFF_MAX_SHIFT: Int = 16
     }
 }
