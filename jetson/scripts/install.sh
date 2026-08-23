@@ -34,6 +34,15 @@ if [[ ! -f /etc/default/zvision ]]; then
 # thermal is serial-pinned to a stable /dev/zodiac-thermal by the udev rule
 # below, so it works on ANY USB port:
 #   ZVISION_ARGS=--hz 8 --camera thermal:/dev/zodiac-thermal:az=0:fov=160:lens=fisheye:fovref=d:name=thermal
+#
+# For a robust rig, list EVERY camera it might have: a camera that won't open is
+# skipped (its arc reads BLIND on ZCOVER) and only ZERO-opened exits, so a lost
+# camera never takes the others down. Pin identity-blind RGBs (Arducams all report
+# serial SN0001) by /dev/v4l/by-path — NOT by-id; force fourcc=MJPG (YUYV is listed
+# first and caps at 640x480); cap two RGBs at 1280x720 on the shared 480 Mbps bus
+# (1080p may -ENOSPC). az/fov are per-camera and must be CALIBRATED against the
+# vehicle nose once the cameras are mounted (fov=85 below is a vendor figure):
+#   ZVISION_ARGS=--hz 8 --camera thermal:/dev/zodiac-thermal:az=0:fov=160:lens=fisheye:fovref=d:name=thermal --camera rgb:/dev/v4l/by-path/platform-3610000.usb-usb-0:2.1:1.0-video-index0:az=0:fov=85:fovref=h:lens=rectilinear:fourcc=MJPG:width=1280:height=720:name=rgb-front
 ZVISION_ARGS=--source fake --hz 10
 EOF
 else
