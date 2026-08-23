@@ -4,11 +4,13 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestDispatcher
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -93,25 +95,180 @@ class UsbLocationSourceTest {
             )
         }
 
+    // --- Error is no longer terminal: the listener retries on a capped backoff
+    // and self-heals, the same fix NetworkLocationSource / BleLocationSource got
+    // and USB had been missing. ---
+
     @Test
-    fun start_after_the_listener_died_reattaches() =
+    fun a_dongle_reappearing_reconnects_automatically_without_a_restart() =
         runTestOnOneDispatcher { dispatcher ->
-            // The idempotence guard must key off a *live* job, not a "started"
-            // flag: a listener that ended (dongle unplugged, permission denied)
-            // has to be retryable, or one bad attempt wedges the source until
-            // the process restarts.
+            // Mutation: restore the old terminal path (set Error and return out
+            // of runConnection). The dongle is re-seated and nothing reconnects,
+            // because no second start() is issued here.
             val handle = FakeUsbHandle(unavailable = UsbAttach.Unavailable("no dongle", LocationSourceError.NO_DEVICE_FOUND))
-            val source = source(handle, dispatcher)
+            val source =
+                UsbLocationSource(
+                    handle = handle,
+                    scope = backgroundScope,
+                    ioDispatcher = dispatcher,
+                    nowMs = { testScheduler.currentTime },
+                    retryBaseMs = 1_000L,
+                    retryMaxMs = 4_000L,
+                )
             source.start()
             runCurrent()
-            assertTrue(source.state.value is LocationSourceState.Error)
-            assertEquals(0, handle.links.size)
+            assertTrue("an unattached dongle must surface as Error", source.state.value is LocationSourceState.Error)
+            assertEquals("no port attached while the dongle is absent", 0, handle.links.size)
+
+            // The dongle is re-seated; the next backoff tick reconnects on its
+            // own -- crucially, NO second start() is called.
+            handle.unavailable = null
+            advanceTimeBy(1_000L)
+            runCurrent()
+            assertEquals("the retry loop must reconnect by itself", 1, handle.links.size)
+
+            handle.links[0].deliver(validGga)
+            runCurrent()
+            assertTrue(
+                "a fix delivered after the auto-reconnect must go Active; state=${source.state.value}",
+                source.state.value is LocationSourceState.Active,
+            )
+        }
+
+    @Test
+    fun a_failed_open_retries_and_recovers_on_a_later_attempt() =
+        runTestOnOneDispatcher { dispatcher ->
+            // A failed open (a bad-baud cable moment) used to end the listener
+            // for good. The next attempt must open. Mutation: terminal-return.
+            val handle = FakeUsbHandle(openFailure = IOException("Error setting baud rate"))
+            val source =
+                UsbLocationSource(
+                    handle = handle,
+                    scope = backgroundScope,
+                    ioDispatcher = dispatcher,
+                    nowMs = { testScheduler.currentTime },
+                    retryBaseMs = 1_000L,
+                    retryMaxMs = 4_000L,
+                )
+            source.start()
+            runCurrent()
+            assertTrue("the first open fails, honestly Error", source.state.value is LocationSourceState.Error)
+            assertEquals(1, handle.links.size)
+            assertTrue("the failed port must be released before the retry", handle.links[0].isClosed)
+
+            handle.openFailure = null // cable re-seated
+            advanceTimeBy(1_000L)
+            runCurrent()
+            assertEquals("a second attempt must attach a fresh port after the backoff", 2, handle.links.size)
+
+            handle.links[1].deliver(validGga)
+            runCurrent()
+            assertTrue(source.state.value is LocationSourceState.Active)
+        }
+
+    @Test
+    fun the_retry_backoff_doubles_and_is_capped() =
+        runTestOnOneDispatcher { dispatcher ->
+            // Mutation: make the backoff constant (return retryBaseMs) or uncap
+            // it. Asserted through the injected wait seam, so it's exact and not
+            // load-sensitive. Every attempt fails fast (dongle absent).
+            val waits = mutableListOf<Long>()
+            val handle = FakeUsbHandle(unavailable = UsbAttach.Unavailable("no dongle", LocationSourceError.NO_DEVICE_FOUND))
+            val source =
+                UsbLocationSource(
+                    handle = handle,
+                    scope = backgroundScope,
+                    ioDispatcher = dispatcher,
+                    nowMs = { testScheduler.currentTime },
+                    retryBaseMs = 100L,
+                    retryMaxMs = 400L,
+                    backoffWait = { ms ->
+                        waits += ms
+                        if (waits.size >= 6) awaitCancellation()
+                    },
+                )
+            source.start()
+            runCurrent()
+
+            assertEquals(
+                "backoff must double from the base and clamp at the ceiling",
+                listOf(100L, 200L, 400L, 400L, 400L, 400L),
+                waits,
+            )
+        }
+
+    @Test
+    fun stop_during_a_retry_backoff_returns_disconnected_and_makes_no_further_attempt() =
+        runTestOnOneDispatcher { dispatcher ->
+            // Mutation: a non-cancellable backoff (Thread.sleep(it)) makes
+            // stop()'s join wait out the full delay -- switching GPS source in
+            // the cab would hang RoutedLocationSource's select() mutex. The
+            // default (real delay) is cancelled instantly by stop().
+            val handle = FakeUsbHandle(unavailable = UsbAttach.Unavailable("no dongle", LocationSourceError.NO_DEVICE_FOUND))
+            val source =
+                UsbLocationSource(
+                    handle = handle,
+                    scope = backgroundScope,
+                    ioDispatcher = dispatcher,
+                    nowMs = { testScheduler.currentTime },
+                    retryBaseMs = 60_000L,
+                    retryMaxMs = 60_000L,
+                )
+            source.start()
+            runCurrent()
+            assertTrue("precondition: parked in the backoff after a failed attempt", source.state.value is LocationSourceState.Error)
+
+            source.stop()
+
+            assertSame(LocationSourceState.Disconnected, source.state.value)
+            assertEquals("stop() during a backoff must make no further attach attempt", 0, handle.links.size)
+        }
+
+    @Test
+    fun a_working_session_that_drops_reconnects_at_the_base_interval_not_the_grown_one() =
+        runTestOnOneDispatcher { dispatcher ->
+            // Mutation: drop `if (result.received) failures = 0`. Two early
+            // failures grow the backoff; a dongle that then attaches, streams,
+            // and is yanked must reset it so recovery is quick. USB signals the
+            // drop by a *thrown* read, so this also pins that pumpNmea carries
+            // the received flag out through the exception (PumpResult).
+            val handle = FakeUsbHandle(unavailable = UsbAttach.Unavailable("no dongle", LocationSourceError.NO_DEVICE_FOUND))
+            val source =
+                UsbLocationSource(
+                    handle = handle,
+                    scope = backgroundScope,
+                    ioDispatcher = dispatcher,
+                    nowMs = { testScheduler.currentTime },
+                    staleMs = 60_000L,
+                    retryBaseMs = 100L,
+                    retryMaxMs = 100_000L,
+                )
+            source.start()
+            runCurrent() // attempt 1: absent -> wait 100
+            advanceTimeBy(100L)
+            runCurrent() // attempt 2: absent -> wait 200
+            assertEquals("no port while the dongle is absent", 0, handle.links.size)
 
             handle.unavailable = null
-            source.start()
+            advanceTimeBy(200L)
+            runCurrent() // attempt 3: attaches
+            assertEquals(1, handle.links.size)
+            handle.links[0].deliver(validGga)
             runCurrent()
+            assertTrue("precondition: a working session", source.state.value is LocationSourceState.Active)
 
-            assertEquals("a dead listener must not block a retry", 1, handle.links.size)
+            // The dongle is yanked mid-read -> the read throws, but the session
+            // read data, so failures reset and the next backoff is the base
+            // 100 ms, NOT the grown 400 ms two prior failures earned.
+            handle.links[0].failRead(IOException("Connection closed"))
+            runCurrent()
+            advanceTimeBy(100L)
+            runCurrent()
+            assertEquals(
+                "a dropped-but-previously-working dongle must retry at the base interval, not the grown one",
+                2,
+                handle.links.size,
+            )
         }
 
     @Test
@@ -400,7 +557,9 @@ private class FakeUsbLink(
 
 private class FakeUsbHandle(
     var unavailable: UsbAttach.Unavailable? = null,
-    private val openFailure: Exception? = null,
+    // var, not val: a test flips a failing open back to succeeding to model a
+    // dongle re-seated between retry attempts.
+    var openFailure: Exception? = null,
     private val readDelayMs: Long? = null,
 ) : UsbSerialHandle {
     val links = mutableListOf<FakeUsbLink>()

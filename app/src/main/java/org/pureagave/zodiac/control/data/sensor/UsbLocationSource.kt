@@ -125,6 +125,13 @@ private class AndroidUsbSerialLink(
  * see [start] and [stop]. The selector chip is tappable as fast as a finger
  * moves and `CockpitViewModel` re-selects the persisted source on launch, so
  * both are entered redundantly in normal use.
+ *
+ * **The connection self-heals.** An [LocationSourceState.Error] used to be
+ * terminal — an unattached dongle, denied permission, a failed open or a cable
+ * yanked mid-drive ended the listener for good. It now retries on a capped
+ * exponential backoff (see [runConnection]), the same recovery
+ * [NetworkLocationSource] and [BleLocationSource] got and that USB had been
+ * missing, so re-seating the cable recovers without a re-select.
  */
 class UsbLocationSource(
     private val handle: UsbSerialHandle,
@@ -136,6 +143,13 @@ class UsbLocationSource(
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val staleMs: Long = FixFreshness.STALE_MS,
     nowMs: () -> Long = { System.nanoTime() / NANOS_PER_MS },
+    private val retryBaseMs: Long = RETRY_BASE_MS,
+    private val retryMaxMs: Long = RETRY_MAX_MS,
+    // Seam for the retry backoff wait, mirroring NetworkLocationSource /
+    // BleLocationSource: tests record the requested delays (asserting the policy
+    // exactly) or park the loop. The default must stay a real `delay` so a stop()
+    // during a backoff cancels it promptly instead of parking a thread.
+    private val backoffWait: suspend (Long) -> Unit = { delay(it) },
 ) : LocationSource {
     constructor(
         applicationContext: Context,
@@ -210,49 +224,132 @@ class UsbLocationSource(
         _state.value = LocationSourceState.Disconnected
     }
 
-    // Broad catch is deliberate: any driver/IO failure must surface as an
-    // Error state, never crash the IO coroutine.
-    @Suppress("TooGenericExceptionCaught")
+    /**
+     * Own the port for as long as the job lives: attach, open and read, and when
+     * that ends for any reason short of a [stop], back off and try again.
+     *
+     * The Error state used to be **terminal** — a dongle not yet attached,
+     * permission denied, a failed open, or a cable yanked mid-drive all ended
+     * the listener for good, and the source stayed Error until the operator
+     * re-selected it. [NetworkLocationSource] and [BleLocationSource] got this
+     * fix; USB had the identical shape and did not. Attempt *count* is unbounded
+     * (the operator re-seats a flaky cable), *cost* is bounded: one port at a
+     * time ([attemptConnection]'s `finally` closes each) and a wait growing to
+     * [retryMaxMs].
+     */
     private suspend fun runConnection(connectionScope: CoroutineScope) {
+        var failures = 0
+        while (connectionScope.isActive) {
+            val result = attemptConnection(connectionScope)
+            if (result.reason == ConnEnd.STOPPED) return
+            // Only a session that actually read bytes counts as progress, so a
+            // dongle that streams then drops recovers at the base interval
+            // rather than carrying a backoff earned by an outage that's over.
+            // USB signals loss by a *thrown* read, so [pumpNmea] carries the
+            // received flag out through the exception ([PumpResult]) — unlike
+            // BLE's clean end-of-stream — which is why it needs its own result.
+            if (result.received) failures = 0
+            failures++
+            backoffWait(backoffDelayMs(failures))
+        }
+    }
+
+    /**
+     * One attach-open-read attempt. Returns why it ended and whether it read any
+     * bytes (the backoff-reset signal). Always releases the port and its USB
+     * connection: a failed open, a read fault and cancellation all used to leave
+     * both held, so one bad attempt made the dongle unopenable until the process
+     * restarted.
+     *
+     * Broad catch is deliberate: any driver/IO failure must surface as an Error
+     * state and a retry, never crash the IO coroutine.
+     */
+    @Suppress("TooGenericExceptionCaught")
+    private suspend fun attemptConnection(connectionScope: CoroutineScope): ConnResult {
         var opened: UsbSerialLink? = null
         try {
-            when (val attached = handle.attach()) {
-                is UsbAttach.Unavailable -> _state.value = LocationSourceState.Error(attached.detail, attached.kind)
-                is UsbAttach.Attached -> {
-                    opened = attached.link
-                    // Published before open() so stop() can interrupt an open or
-                    // read that never returns.
-                    link = attached.link
-                    attached.link.open(baudRate)
-                    pumpNmea(attached.link, connectionScope)
+            val attached = handle.attach()
+            if (attached is UsbAttach.Unavailable) {
+                _state.value = LocationSourceState.Error(attached.detail, attached.kind)
+                return ConnResult(ConnEnd.FAILED, received = false)
+            }
+            val fresh = (attached as UsbAttach.Attached).link
+            opened = fresh
+            // Published before open() so stop() can interrupt an open or read
+            // that never returns.
+            link = fresh
+            fresh.open(baudRate)
+            // Opened, nothing read yet: a re-attempt after an Error must read
+            // Searching, never re-assert a fix it hasn't seen. An already-Active
+            // fix inside its staleness window is left to the freshness watchdog.
+            if (_state.value !is LocationSourceState.Active) _state.value = LocationSourceState.Searching
+            val pump = pumpNmea(fresh, connectionScope)
+            return when {
+                !connectionScope.isActive -> ConnResult(ConnEnd.STOPPED, pump.received)
+                pump.error != null -> {
+                    _state.value = LocationSourceState.Error("USB: ${pump.error.message}", LocationSourceError.IO_ERROR)
+                    ConnResult(ConnEnd.FAILED, pump.received)
                 }
+                else -> ConnResult(ConnEnd.ENDED, pump.received)
             }
         } catch (ex: Exception) {
-            // A read/close throwing after stop() cancelled this job is a normal
-            // shutdown, not an error — stop() already set Disconnected.
-            if (connectionScope.isActive) {
+            // attach()/open() threw. A throw after stop() cancelled this job is a
+            // normal shutdown, not an error — stop() already set Disconnected.
+            return if (connectionScope.isActive) {
                 _state.value = LocationSourceState.Error("USB: ${ex.message}", LocationSourceError.IO_ERROR)
+                ConnResult(ConnEnd.FAILED, received = false)
+            } else {
+                ConnResult(ConnEnd.STOPPED, received = false)
             }
         } finally {
-            // Every exit path releases the port and its USB connection: a failed
-            // open, an ended stream and cancellation all used to leave both
-            // held, so one bad attempt made the dongle unopenable until the
-            // process restarted.
             runCatching { opened?.close() }
             if (link === opened) link = null
         }
     }
 
+    /**
+     * Read until the job is cancelled or a read throws (a yanked dongle), never
+     * letting the read fault escape: it comes back as [PumpResult.error] so the
+     * caller can both report it and preserve whether the session read anything.
+     */
+    @Suppress("TooGenericExceptionCaught")
     private suspend fun pumpNmea(
         serialLink: UsbSerialLink,
         connectionScope: CoroutineScope,
-    ) {
+    ): PumpResult {
         val assembler = NmeaLineAssembler()
-        while (connectionScope.isActive) {
-            val chunk = serialLink.read()
-            if (chunk.isNotEmpty()) assembler.append(chunk, chunk.size).forEach(::ingestLine)
+        var received = false
+        return try {
+            while (connectionScope.isActive) {
+                val chunk = serialLink.read()
+                if (chunk.isNotEmpty()) {
+                    received = true
+                    assembler.append(chunk, chunk.size).forEach(::ingestLine)
+                }
+            }
+            PumpResult(received, error = null)
+        } catch (ex: Exception) {
+            PumpResult(received, error = ex)
         }
     }
+
+    /**
+     * Exponential backoff, capped: [retryBaseMs] × 2^(failures−1), never above
+     * [retryMaxMs]. Same policy and reasoning as [NetworkLocationSource]'s.
+     */
+    private fun backoffDelayMs(failures: Int): Long {
+        val shift = (failures - 1).coerceIn(0, BACKOFF_MAX_SHIFT)
+        val grown = retryBaseMs shl shift
+        return grown.coerceIn(retryBaseMs, maxOf(retryBaseMs, retryMaxMs))
+    }
+
+    private enum class ConnEnd { STOPPED, ENDED, FAILED }
+
+    /** Why [attemptConnection] returned, and whether it read any bytes while it ran. */
+    private data class ConnResult(val reason: ConnEnd, val received: Boolean)
+
+    /** [pumpNmea]'s outcome: whether any bytes arrived, and the read fault (if any) that ended it. */
+    private data class PumpResult(val received: Boolean, val error: Exception?)
 
     private fun ingestLine(line: String) {
         NmeaParser.parse(line)?.let {
@@ -264,6 +361,15 @@ class UsbLocationSource(
     companion object {
         const val DEFAULT_BAUD: Int = 9600
         private const val NANOS_PER_MS: Long = 1_000_000L
+
+        /** First retry after a failed attempt — short enough a re-seated cable heals unnoticed. */
+        private const val RETRY_BASE_MS: Long = 1_000L
+
+        /** Ceiling on the backoff, i.e. the worst-case blindness after the dongle returns. */
+        private const val RETRY_MAX_MS: Long = 30_000L
+
+        /** Caps the shift in [backoffDelayMs] well short of Long overflow. */
+        private const val BACKOFF_MAX_SHIFT: Int = 16
     }
 }
 
