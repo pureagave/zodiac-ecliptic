@@ -1,11 +1,18 @@
 package org.pureagave.zodiac.beacon
 
+import java.time.Instant
+import java.time.ZoneOffset
 import java.util.Locale
+import kotlin.math.abs
 
 /**
  * Minimal NMEA 0183 output helpers: the standard XOR checksum and a synthesized
  * true-heading (HDT) sentence for the phone's compass. The GNSS sentences the
  * phone already emits are forwarded verbatim; HDT is the one we generate.
+ *
+ * [gga]/[rmc] are the exception to "forwarded verbatim": they exist only for
+ * the GPS simulation mode (`GpsSim.kt`) — real fixes never go through these,
+ * they are sent byte-for-byte as the OS handed them over (`TelemetryBroadcaster.forward`).
  */
 object Nmea {
     private const val FULL_CIRCLE = 360.0
@@ -17,12 +24,78 @@ object Nmea {
     // Largest value the epoch grammar ([0-9]{1,10}) can carry: ten nines.
     private const val MAX_EPOCH = 9_999_999_999L
 
+    private const val MINUTES_PER_DEGREE = 60.0
+    private const val KNOTS_PER_KPH = 1.852
+    private const val NANOS_PER_HUNDREDTH_SEC = 10_000_000L
+    private const val HUNDRED = 100
+
     /** `$GPHDT,<deg>,T*cs` — true heading, 0..360, one decimal. */
     fun hdt(headingDeg: Double): String {
         val norm = ((headingDeg % FULL_CIRCLE) + FULL_CIRCLE) % FULL_CIRCLE
         // Locale.US: a comma-decimal locale would emit "12,3" and split the
         // sentence into an extra field, silently corrupting the fleet's heading.
         val body = "GPHDT,%.1f,T".format(Locale.US, norm)
+        return "\$$body*${checksum(body)}\r\n"
+    }
+
+    /**
+     * `$GPGGA,hhmmss.ss,DDMM.MMMM,N|S,DDDMM.MMMM,E|W,8,12,0.8,1191.0,M,0.0,M,,*cs`
+     * — a GPS-simulation-mode fix (see `GpsSim.kt`). Fix quality **8** is the
+     * NMEA 0183 "Simulation mode" indicator (a datasheet fact, flagged as
+     * such) — the in-band marker that a fix is fabricated; the shipped
+     * consumer accepts any quality `> 0` (measured, `NmeaParser.kt:161`).
+     * [epochMillis] is UTC wall time, injected rather than read from a clock
+     * here so the sentence is a pure function of its inputs.
+     */
+    fun gga(
+        latDeg: Double,
+        lonDeg: Double,
+        epochMillis: Long,
+    ): String {
+        val fields = latLonFields(latDeg, lonDeg)
+        val body =
+            "GPGGA,%s,%s,%s,%s,%s,%d,%d,%.1f,%.1f,M,0.0,M,,".format(
+                Locale.US,
+                utcTimeField(epochMillis),
+                fields.lat,
+                fields.latHemi,
+                fields.lon,
+                fields.lonHemi,
+                SIM_FIX_QUALITY,
+                SIM_SATELLITES,
+                SIM_HDOP,
+                SIM_ALTITUDE_M,
+            )
+        return "\$$body*${checksum(body)}\r\n"
+    }
+
+    /**
+     * `$GPRMC,hhmmss.ss,A,DDMM.MMMM,N|S,DDDMM.MMMM,E|W,knots,cog,ddMMyy,,,A*cs`
+     * — the sim's RMC (see `GpsSim.kt`): status is always `A` (a synthetic fix
+     * is never "void"); course equals the sim heading (COG == heading under
+     * straight-line dead reckoning), emitted even at speed 0 for determinism.
+     */
+    fun rmc(
+        latDeg: Double,
+        lonDeg: Double,
+        speedKph: Double,
+        headingDeg: Double,
+        epochMillis: Long,
+    ): String {
+        val fields = latLonFields(latDeg, lonDeg)
+        val knots = speedKph / KNOTS_PER_KPH
+        val body =
+            "GPRMC,%s,A,%s,%s,%s,%s,%.1f,%.1f,%s,,,A".format(
+                Locale.US,
+                utcTimeField(epochMillis),
+                fields.lat,
+                fields.latHemi,
+                fields.lon,
+                fields.lonHemi,
+                knots,
+                headingDeg,
+                utcDateField(epochMillis),
+            )
         return "\$$body*${checksum(body)}\r\n"
     }
 
@@ -141,5 +214,46 @@ object Nmea {
         var c = 0
         for (ch in body) c = c xor ch.code
         return "%02X".format(Locale.ROOT, c)
+    }
+
+    /** `DDMM.MMMM`/`DDDMM.MMMM` + hemisphere, for [gga]/[rmc]. */
+    private data class LatLonFields(val lat: String, val latHemi: String, val lon: String, val lonHemi: String)
+
+    /**
+     * Lat `%02d%07.4f` (deg·100 + minutes, 4 decimal minutes ≈ 0.19 m
+     * resolution), lon `%03d%07.4f`; hemisphere from sign. Shared formatter
+     * for [gga] and [rmc] so the two builders can't drift apart.
+     */
+    private fun latLonFields(
+        latDeg: Double,
+        lonDeg: Double,
+    ): LatLonFields {
+        val latHemi = if (latDeg < 0) "S" else "N"
+        val lonHemi = if (lonDeg < 0) "W" else "E"
+        val latAbs = abs(latDeg)
+        val lonAbs = abs(lonDeg)
+        val latWhole = latAbs.toInt()
+        val latMin = (latAbs - latWhole) * MINUTES_PER_DEGREE
+        val lonWhole = lonAbs.toInt()
+        val lonMin = (lonAbs - lonWhole) * MINUTES_PER_DEGREE
+        return LatLonFields(
+            lat = "%02d%07.4f".format(Locale.US, latWhole, latMin),
+            latHemi = latHemi,
+            lon = "%03d%07.4f".format(Locale.US, lonWhole, lonMin),
+            lonHemi = lonHemi,
+        )
+    }
+
+    /** `hhmmss.ss` in UTC, for [gga]/[rmc]. [epochMillis] is never read from a clock — always the caller's value. */
+    private fun utcTimeField(epochMillis: Long): String {
+        val utc = Instant.ofEpochMilli(epochMillis).atZone(ZoneOffset.UTC)
+        val hundredths = utc.nano / NANOS_PER_HUNDREDTH_SEC
+        return "%02d%02d%02d.%02d".format(Locale.US, utc.hour, utc.minute, utc.second, hundredths)
+    }
+
+    /** `ddMMyy` in UTC, for [rmc]. */
+    private fun utcDateField(epochMillis: Long): String {
+        val utc = Instant.ofEpochMilli(epochMillis).atZone(ZoneOffset.UTC)
+        return "%02d%02d%02d".format(Locale.US, utc.dayOfMonth, utc.monthValue, utc.year % HUNDRED)
     }
 }

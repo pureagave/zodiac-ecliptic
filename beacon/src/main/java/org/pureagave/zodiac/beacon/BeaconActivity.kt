@@ -12,6 +12,7 @@ import android.os.Bundle
 import android.os.PowerManager
 import android.provider.Settings
 import android.view.Gravity
+import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.LinearLayout
@@ -32,6 +33,11 @@ class BeaconActivity : AppCompatActivity() {
     private lateinit var statusView: TextView
     private lateinit var toggle: Button
 
+    // internal, not private: BeaconActivitySimBannerTest reads this directly
+    // rather than walking the view tree to find it (the same "internal seam"
+    // pattern as gpsHandleOverride / TelemetryBroadcaster.statusText()).
+    internal lateinit var simBanner: TextView
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         requestNeededPermissions()
@@ -39,11 +45,20 @@ class BeaconActivity : AppCompatActivity() {
         setContentView(buildUi())
 
         lifecycleScope.launch {
-            TelemetryBroadcaster.isRunning
-                .combine(TelemetryBroadcaster.status) { running, status -> running to status }
-                .collect { (running, status) ->
+            combine(
+                TelemetryBroadcaster.isRunning,
+                TelemetryBroadcaster.status,
+                TelemetryBroadcaster.simState,
+            ) { running, status, sim -> Triple(running, status, sim) }
+                .collect { (running, status, sim) ->
                     toggle.text = if (running) "STOP" else "START"
                     statusView.text = status
+                    if (sim != null) {
+                        simBanner.text = simBannerText(sim)
+                        simBanner.visibility = View.VISIBLE
+                    } else {
+                        simBanner.visibility = View.GONE
+                    }
                 }
         }
     }
@@ -71,6 +86,19 @@ class BeaconActivity : AppCompatActivity() {
                 setTextColor(Color.parseColor("#00FF66"))
                 gravity = Gravity.CENTER
             }
+        // The unmissable "can't miss it" layer on top of the readout's own
+        // GPS SIMULATED line (see TelemetryBroadcaster.statusText()) — the
+        // semantic fault-red background, GONE unless a sim is armed.
+        simBanner =
+            TextView(this).apply {
+                textSize = STATUS_SP
+                typeface = Typeface.DEFAULT_BOLD
+                setTextColor(Color.BLACK)
+                setBackgroundColor(Color.parseColor("#FF5555"))
+                gravity = Gravity.CENTER
+                setPadding(pad, pad / 2, pad, pad / 2)
+                visibility = View.GONE
+            }
         statusView =
             TextView(this).apply {
                 text = "Idle"
@@ -86,6 +114,7 @@ class BeaconActivity : AppCompatActivity() {
                 setOnClickListener { onToggle() }
             }
         root.addView(title)
+        root.addView(simBanner)
         root.addView(statusView)
         root.addView(toggle)
         return root

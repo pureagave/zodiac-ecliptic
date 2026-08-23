@@ -113,7 +113,7 @@ Only the fields the tablet actually reads are listed.
 |---|---|
 | 2, 3 | latitude `DDMM.MMMM`, hemisphere `N`/`S` |
 | 4, 5 | longitude `DDDMM.MMMM`, hemisphere `E`/`W` |
-| 6 | fix quality — must be `> 0` or the sentence is discarded |
+| 6 | fix quality — must be `> 0` or the sentence is discarded. Quality **`8` = NMEA "Simulation mode"**: emitted by the beacon's GPS test mode (a real fix in every other respect; `$ZBCN` field-2 then reports `8` fleet-wide). |
 | 8 | HDOP → accuracy estimate as `hdop × 5.0` metres |
 
 **`RMC`** — minimum 9 fields.

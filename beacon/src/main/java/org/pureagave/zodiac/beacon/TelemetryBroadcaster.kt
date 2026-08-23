@@ -313,6 +313,18 @@ object TelemetryBroadcaster : SensorEventListener {
     private val _running = MutableStateFlow(false)
     val isRunning: StateFlow<Boolean> = _running.asStateFlow()
 
+    /**
+     * Armed GPS simulation, or null. MEMORY-ONLY by design: never persisted,
+     * cleared by [start] and [stop] — a rebooted beacon always comes back on
+     * real GNSS. `internal`, not private + `StateFlow`-wrapped like [status]/
+     * [isRunning]: only [SimGpsReceiver], [BeaconActivity] and tests touch it,
+     * all inside this module, so a plain mutable field is the simplest thing
+     * that works (same seam pattern as [gpsHandleOverride]) and keeps this
+     * feature from adding a member function to an object already at 21/22 of
+     * detekt's `TooManyFunctions` budget.
+     */
+    internal val simState = MutableStateFlow<GpsSimulator?>(null)
+
     private var scope: CoroutineScope? = null
 
     // send() launches one coroutine per sentence on Dispatchers.IO, which lets
@@ -441,6 +453,12 @@ object TelemetryBroadcaster : SensorEventListener {
         lastWatchdogError = null
         gpsWired = false
         lastGgaAtMs = 0L
+        // A restart inside a living process must never inherit an armed sim —
+        // the sim is memory-only and start() is the only other place besides
+        // stop() that clears it, so a START_STICKY re-delivery while ALREADY
+        // running (which early-returns above, before this line) is the one
+        // case that correctly keeps it: same process, deliberate state.
+        simState.value = null
         // Share the uptime epoch startElapsedMs just reset above -- a restart
         // should not carry a stale send/failure count from a previous run into
         // the fresh readout.
@@ -536,7 +554,18 @@ object TelemetryBroadcaster : SensorEventListener {
             TickLoop(
                 body = { tick ->
                     lastTickAtMs = SystemClock.elapsedRealtime()
-                    hdtSentenceOrNull(headingDeg)?.let { send(it) }
+                    val sim = simState.value
+                    if (sim != null) {
+                        val simNowMs = System.currentTimeMillis()
+                        simTickSentences(sim, tick, simNowMs).forEach { send(it) }
+                        if (tick % SIM_FIX_EVERY_TICKS == 0L) {
+                            fixQuality = SIM_FIX_QUALITY
+                            satellites = SIM_SATELLITES
+                            lastGgaAtMs = SystemClock.elapsedRealtime()
+                        }
+                    } else {
+                        hdtSentenceOrNull(headingDeg)?.let { send(it) }
+                    }
                     send(Nmea.ztlm(pitchDeg, rollDeg, speedKph()))
                     if (tick % ENV_EVERY_TICKS == 0L) zenvSentenceOrNull(luxValue)?.let { send(it) }
                     if (tick % ODO_EVERY_TICKS == 0L) send(Nmea.zodo(tripMeters, totalMeters))
@@ -599,6 +628,7 @@ object TelemetryBroadcaster : SensorEventListener {
 
     fun stop() {
         persistTotal()
+        simState.value = null
         if (gpsWired) {
             val loc = locationListener
             val nmea = nmeaListener
@@ -619,8 +649,16 @@ object TelemetryBroadcaster : SensorEventListener {
     }
 
     /** GNSS sentence from the OS → forward it verbatim + refresh fix health. The
-     * full status readout is rebuilt on the broadcast loop (see [statusText]). */
+     * full status readout is rebuilt on the broadcast loop (see [statusText]).
+     *
+     * While a GPS simulation is armed, real GNSS is suppressed entirely — the
+     * override is deterministic (no interleaving of real and fake positions)
+     * and this guard runs BEFORE both [send] and [updateFixHealth], so a real
+     * GGA arriving mid-test cannot overwrite the sim's q8/12 fix-health stamp
+     * (see the tick loop in [launchTickLoop]).
+     */
     private fun forward(nmea: String) {
+        if (simState.value != null) return
         send(if (nmea.endsWith("\n")) nmea else "$nmea\r\n")
         updateFixHealth(nmea)
     }
@@ -636,6 +674,7 @@ object TelemetryBroadcaster : SensorEventListener {
      */
     internal fun statusText(): String {
         val loc = lastLocation
+        val sim = simState.value
         val up = uptimeSec()
         val fix = BeaconNet.reportedFixHealth(SystemClock.elapsedRealtime(), lastGgaAtMs, fixQuality, satellites, FIX_STALE_MS)
         val mic = if (audioActive) "rms %.2f%s".format(audioRms, if (audioBeat) "  ♪BEAT" else "") else "off (grant mic → \$ZAUD)"
@@ -643,6 +682,10 @@ object TelemetryBroadcaster : SensorEventListener {
             buildString {
                 append(
                     when {
+                        sim != null -> {
+                            val (simLat, simLon) = sim.positionAt(System.currentTimeMillis())
+                            "GPS    SIM %.5f, %.5f".format(simLat, simLon)
+                        }
                         loc != null -> "GPS    %.5f, %.5f".format(loc.latitude, loc.longitude)
                         gpsWired -> "GPS    acquiring…"
                         else -> "GPS OFF — grant location permission"
@@ -666,7 +709,11 @@ object TelemetryBroadcaster : SensorEventListener {
             }
         lastGoodStatus = body
         val health = tickHealthLine(SystemClock.elapsedRealtime(), lastTickAtMs, tickErrors, lastTickError)
-        return if (health != null) "$health\n$body" else body
+        // Sim banner stacks above the tick-dead banner exactly the same way the
+        // tick-dead banner stacks above the body: a conditional line prepended
+        // only when relevant, never replacing anything below it.
+        val simLine = sim?.let { simStatusLine(it) }
+        return listOfNotNull(simLine, health, body).joinToString("\n")
     }
 
     /**
@@ -769,7 +816,8 @@ object TelemetryBroadcaster : SensorEventListener {
         }
     }
 
-    private fun speedKph(): Double = (lastLocation?.speed?.toDouble() ?: 0.0) * MPS_TO_KPH
+    /** Armed sim's speed takes over `$ZTLM`'s speed field; otherwise the real GNSS speed, as before. */
+    private fun speedKph(): Double = simState.value?.spec?.speedKph ?: ((lastLocation?.speed?.toDouble() ?: 0.0) * MPS_TO_KPH)
 
     /**
      * Start the mic capture loop that emits `$ZAUD` for sound-reactive lighting.

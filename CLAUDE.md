@@ -223,6 +223,16 @@ buffered or transmitted. An absent sensor emits **nothing** rather than a
 fabricated `0.0` (heading and lux). GPS failure is never fatal — the other
 channels keep broadcasting.
 
+**GPS test mode** (`GpsSim.kt`, `SimGpsReceiver.kt`) — the one sanctioned
+fabrication, for fleet-wide location testing. Armed over adb (`am broadcast -a
+org.pureagave.zodiac.beacon.SIM_GPS …`, DUMP-guarded), it makes the tick loop
+synthesize GGA/RMC/HDT for any point (preset or lat/lon) or a moving
+heading+speed track, overriding raw GNSS. Marked honestly: GGA **quality 8**
+(NMEA "Simulation mode") on the wire + a red `⚠ GPS SIMULATED` banner. Armed
+state is **memory-only — never persisted**, so a reboot restores real GNSS; the
+lifetime odometer never accumulates simulated meters. See
+`design/BEACON-GPS-TEST-MODE-spec.md`.
+
 Tests: `beacon/src/test/.../{Nmea,AudioLevels,ShockDetector,TripOdometer,BeaconNet,
 ForegroundTypes,TickLoop,...}Test.kt` — 18 files, several Robolectric.
 

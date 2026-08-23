@@ -1,10 +1,12 @@
 package org.pureagave.zodiac.beacon
 
+import android.app.Application
 import android.content.Intent
 import android.location.LocationListener
 import android.location.OnNmeaMessageListener
 import androidx.test.core.app.ApplicationProvider
 import org.junit.After
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
@@ -12,6 +14,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.shadows.ShadowPowerManager
 
 /**
@@ -80,5 +83,42 @@ class TelemetryServiceTest {
         val lock = ShadowPowerManager.getLatestWakeLock()
         assertNotNull(lock)
         assertFalse("wake lock must be released when the service is destroyed", lock!!.isHeld)
+    }
+
+    @Test
+    fun starting_the_service_registers_the_sim_gps_receiver_guarded_by_dump() {
+        // Mutation target: dropping the broadcastPermission argument (or
+        // passing null) from ContextCompat.registerReceiver -- would silently
+        // let any app broadcast SIM_GPS, not just adb shell/system.
+        gpsHandleOverride = noOpGpsHandle
+        val application = ApplicationProvider.getApplicationContext<Application>()
+        Robolectric.buildService(TelemetryService::class.java, Intent(application, TelemetryService::class.java))
+            .create()
+            .startCommand(0, 0)
+
+        val wrapper = shadowOf(application).registeredReceivers.firstOrNull { it.broadcastReceiver is SimGpsReceiver }
+        assertNotNull("expected the SIM_GPS receiver to be registered", wrapper)
+        assertEquals("android.permission.DUMP", wrapper!!.broadcastPermission)
+        val actions = wrapper.intentFilter.actionsIterator().asSequence().toList()
+        assertTrue(actions.contains(ACTION_SIM_GPS))
+        assertTrue(actions.contains(ACTION_SIM_GPS_OFF))
+    }
+
+    @Test
+    fun destroying_the_service_unregisters_the_sim_gps_receiver() {
+        // Mutation target: delete the unregisterReceiver call in onDestroy() --
+        // the receiver (and its DUMP guard) would leak past the service's
+        // lifetime, contradicting "an arm command against a stopped beacon is
+        // inert by construction".
+        gpsHandleOverride = noOpGpsHandle
+        val application = ApplicationProvider.getApplicationContext<Application>()
+        val controller =
+            Robolectric.buildService(TelemetryService::class.java, Intent(application, TelemetryService::class.java))
+                .create()
+                .startCommand(0, 0)
+        controller.destroy()
+
+        val stillRegistered = shadowOf(application).registeredReceivers.any { it.broadcastReceiver is SimGpsReceiver }
+        assertFalse("expected the SIM_GPS receiver to be unregistered on destroy", stillRegistered)
     }
 }

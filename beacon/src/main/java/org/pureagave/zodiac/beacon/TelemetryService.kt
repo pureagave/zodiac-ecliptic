@@ -7,6 +7,7 @@ import android.app.NotificationManager
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.net.wifi.WifiManager
 import android.os.Build
@@ -18,8 +19,10 @@ import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 
 /** Set by the caller when a start has a reason to believe it's happening in the
  * background: a boot start (B3), or a manual re-delivery. A `START_STICKY`
@@ -48,6 +51,12 @@ class TelemetryService : Service() {
     private val versionScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var versionBroadcaster: VersionBroadcaster? = null
 
+    // adb-only GPS simulation control (SIM-GPS): only registered while this
+    // service runs, so an arm command against a stopped beacon is inert by
+    // construction -- see SimGpsReceiver's KDoc.
+    private var simReceiver: SimGpsReceiver? = null
+    private var simNotifyJob: Job? = null
+
     override fun onStartCommand(
         intent: Intent?,
         flags: Int,
@@ -73,7 +82,50 @@ class TelemetryService : Service() {
         // announce is a nice-to-have, never worth risking the fleet's only GNSS.
         runCatching { startVersionBroadcast() }
             .onFailure { Log.w(TAG, "beacon: version announce failed to start (non-fatal)", it) }
+        // Same treatment: the adb sim-control receiver is a test aid, never
+        // worth risking the fleet's only GNSS if registration somehow fails.
+        runCatching { registerSimReceiver() }
+            .onFailure { Log.w(TAG, "beacon: sim GPS receiver registration failed (non-fatal)", it) }
         return START_STICKY
+    }
+
+    /**
+     * Idempotent (mirrors [startVersionBroadcast]'s guard): a `START_STICKY`
+     * re-delivery or a repeated manual start must not register a second
+     * receiver. `RECEIVER_EXPORTED` is required at targetSdk 35 even though
+     * the `android.permission.DUMP` argument means only the adb shell uid (or
+     * system) can actually deliver to it.
+     */
+    private fun registerSimReceiver() {
+        if (simReceiver != null) return
+        val receiver = SimGpsReceiver()
+        ContextCompat.registerReceiver(
+            this,
+            receiver,
+            IntentFilter().apply {
+                addAction(ACTION_SIM_GPS)
+                addAction(ACTION_SIM_GPS_OFF)
+            },
+            Manifest.permission.DUMP,
+            null,
+            ContextCompat.RECEIVER_EXPORTED,
+        )
+        simReceiver = receiver
+        // Re-post the ongoing notification on arm/disarm so "GPS SIMULATED" is
+        // visible without opening the app. Optional per the spec (droppable if
+        // it fought the service-owns-its-notification lifecycle) -- it doesn't,
+        // since this only ever calls the same buildNotification() the service
+        // already owns, from a job this same service cancels in onDestroy.
+        simNotifyJob =
+            versionScope.launch {
+                TelemetryBroadcaster.simState.collect { sim ->
+                    val text = if (sim != null) "⚠ GPS SIMULATED — ${sim.spec.label}" else degradedText()
+                    runCatching {
+                        val mgr = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                        mgr.notify(NOTIFICATION_ID, buildNotification(text))
+                    }
+                }
+            }
     }
 
     override fun onDestroy() {
@@ -82,6 +134,10 @@ class TelemetryService : Service() {
         TelemetryBroadcaster.stop()
         runCatching { versionBroadcaster?.stop() }
         versionBroadcaster = null
+        simNotifyJob?.cancel()
+        simNotifyJob = null
+        simReceiver?.let { runCatching { unregisterReceiver(it) } }
+        simReceiver = null
         versionScope.cancel()
         wakeLock?.let { if (it.isHeld) it.release() }
         wakeLock = null
