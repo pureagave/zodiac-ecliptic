@@ -164,7 +164,8 @@ presentational — all three read the same state.
 - **Passenger display**: a self-running card carousel for riders — playa address,
   an **interactive track-up live map** (pan/zoom, auto-follows the vehicle), a
   mic-driven oscilloscope, thermal contacts around the vehicle, an impact
-  "bump" gauge, trip odometer, sunrise/sunset countdown, nearest art. A card with
+  "bump" gauge, trip odometer, sunrise/sunset countdown, nearest art, a live
+  telemetry feed off the fleet bus. A card with
   no data is dropped from the rotation rather than shown empty, and the "souls
   detected" card only appears on a genuinely live vision feed. The **passenger
   Fires default to this automatically** (by hardware — non-OLED = passenger),

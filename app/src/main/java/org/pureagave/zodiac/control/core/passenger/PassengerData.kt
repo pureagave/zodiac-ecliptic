@@ -39,6 +39,10 @@ fun availablePassengerCards(inputs: PassengerInputs): List<PassengerCard> =
             PassengerCard.SOULS -> inputs.visionLive
             PassengerCard.BUMP -> inputs.hasShock
             PassengerCard.TRIP -> inputs.odometer != null
+            // The ticker has a line to show if *either* GPS or any beacon
+            // channel is alive; with neither, the card leaves the rotation
+            // rather than looping a lone "NO TELEMETRY" line for riders.
+            PassengerCard.TELEMETRY -> inputs.hasFix || inputs.hasBeacon
             // Local calculation, no network, no beacon — always available.
             PassengerCard.SUN -> true
             PassengerCard.ART -> inputs.artAhead > 0
@@ -62,6 +66,14 @@ data class PassengerInputs(
     val artAhead: Int = 0,
     /** `state.playaMap != null` — a failed/unloaded map removes [PassengerCard.MAP]. */
     val hasMap: Boolean = false,
+    /**
+     * Any beacon-sourced channel is alive — `state.beaconHealth != null ||
+     * state.odometer != null || state.ambientLux != null`
+     * (`PassengerScreen.kt`'s `passengerInputs`). [PassengerCard.TELEMETRY]
+     * gates on this **or** [hasFix]: the ticker has something real to show if
+     * either is true.
+     */
+    val hasBeacon: Boolean = false,
 )
 
 /**

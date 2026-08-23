@@ -33,6 +33,17 @@ enum class PassengerCard {
     /** `$ZODO` trip + lifetime distance for this burn. */
     TRIP,
 
+    /**
+     * The vehicle's raw feed, for the rider who asks what all the numbers are.
+     * Same source-status line + scrolling ticker the cockpit TELEMETRY box
+     * shows (`ui/concepts/TelemetryBox.kt`), reused verbatim with the
+     * passenger colour policy — see `ui/passenger/PassengerTelemetryCard.kt`.
+     * Right after [TRIP] by design: the data-flavoured cards (BUMP, TRIP,
+     * TELEMETRY) cluster together before the ambient SUN/ART pair closes the
+     * loop.
+     */
+    TELEMETRY,
+
     /** Countdown to the next sunrise or sunset. */
     SUN,
 

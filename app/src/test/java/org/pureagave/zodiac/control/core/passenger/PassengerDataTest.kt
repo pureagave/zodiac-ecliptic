@@ -55,6 +55,7 @@ class PassengerDataTest {
                     odometer = Odometer(tripMeters = 1.0, totalMeters = 2.0),
                     artAhead = 3,
                     hasMap = true,
+                    hasBeacon = true,
                 ),
             )
 
@@ -76,6 +77,68 @@ class PassengerDataTest {
         )
         assertTrue(
             availablePassengerCards(PassengerInputs(hasFix = true, hasMap = true)).contains(PassengerCard.MAP),
+        )
+    }
+
+    @Test
+    fun telemetry_available_with_fix_only_beacon_only_both_or_neither() {
+        // Full 2x2: an `&&` mutant fails the single-source rows, a
+        // hardcoded-availability mutant fails "neither".
+        assertFalse(
+            "neither fix nor beacon -> no telemetry card",
+            availablePassengerCards(PassengerInputs(hasFix = false, hasBeacon = false))
+                .contains(PassengerCard.TELEMETRY),
+        )
+        assertTrue(
+            "fix only -> telemetry card",
+            availablePassengerCards(PassengerInputs(hasFix = true, hasBeacon = false))
+                .contains(PassengerCard.TELEMETRY),
+        )
+        assertTrue(
+            "beacon only -> telemetry card",
+            availablePassengerCards(PassengerInputs(hasFix = false, hasBeacon = true))
+                .contains(PassengerCard.TELEMETRY),
+        )
+        assertTrue(
+            "both -> telemetry card",
+            availablePassengerCards(PassengerInputs(hasFix = true, hasBeacon = true))
+                .contains(PassengerCard.TELEMETRY),
+        )
+    }
+
+    @Test
+    fun telemetry_rotates_after_trip() {
+        // Explicit literal, not PassengerCard.entries.toList() (that's
+        // the_full_bus_lights_up_every_card's job) — this pins the concrete
+        // position: right after TRIP, before SUN. Also double-checks the
+        // PASSENGER-UI MAP position (right after WHERE) survived the merge.
+        val cards =
+            availablePassengerCards(
+                PassengerInputs(
+                    hasFix = true,
+                    hasAudio = true,
+                    visionLive = true,
+                    hasShock = true,
+                    odometer = Odometer(1.0, 2.0),
+                    artAhead = 1,
+                    hasMap = true,
+                    hasBeacon = true,
+                ),
+            )
+
+        assertEquals(
+            listOf(
+                PassengerCard.WHERE,
+                PassengerCard.MAP,
+                PassengerCard.AUDIO,
+                PassengerCard.SOULS,
+                PassengerCard.BUMP,
+                PassengerCard.TRIP,
+                PassengerCard.TELEMETRY,
+                PassengerCard.SUN,
+                PassengerCard.ART,
+            ),
+            cards,
         )
     }
 
@@ -107,7 +170,16 @@ class PassengerDataTest {
                 PassengerInputs(hasFix = true, visionLive = true, odometer = Odometer(1.0, 2.0)),
             )
 
-        assertEquals(listOf(PassengerCard.WHERE, PassengerCard.SOULS, PassengerCard.TRIP, PassengerCard.SUN), cards)
+        assertEquals(
+            listOf(
+                PassengerCard.WHERE,
+                PassengerCard.SOULS,
+                PassengerCard.TRIP,
+                PassengerCard.TELEMETRY,
+                PassengerCard.SUN,
+            ),
+            cards,
+        )
     }
 
     @Test

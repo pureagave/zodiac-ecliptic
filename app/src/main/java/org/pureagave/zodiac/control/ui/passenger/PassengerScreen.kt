@@ -283,6 +283,7 @@ private fun passengerCard(
         PassengerCard.SOULS -> soulsCard(ctx.state, theme, ctx.motion.sweep)
         PassengerCard.BUMP -> bumpCard(ctx.state, theme, urgent)
         PassengerCard.TRIP -> tripCard(ctx.state, theme)
+        PassengerCard.TELEMETRY -> telemetryCard(ctx.state, theme)
         PassengerCard.SUN -> sunCard(theme, ctx.sun)
         PassengerCard.ART -> artCard(ctx, theme)
     }
@@ -488,6 +489,7 @@ private fun passengerInputs(
         odometer = state.odometer,
         artAhead = artCount,
         hasMap = state.playaMap != null,
+        hasBeacon = state.beaconHealth != null || state.odometer != null || state.ambientLux != null,
     )
 
 /**
