@@ -61,12 +61,15 @@ sudo cp jetson/systemd/zodiac-deck.service /etc/systemd/system/
 sudo systemctl daemon-reload && sudo systemctl enable --now zodiac-deck
 ```
 
-> **The `cp -r jetson/zdeck` step is not optional and nothing else does it.**
-> `zodiac-deck.service` runs `-m zdeck` with `WorkingDirectory=/opt/zodiac/jetson`,
-> but `scripts/install.sh` copies only the `zvision` package and `pyproject.toml`
-> packages only `zvision`. On a plain `git clone` to `/opt/zodiac` it happens to
-> work because the checkout is already there; on an `install.sh`-from-elsewhere
-> box it fails with `ModuleNotFoundError: zdeck`. Re-copy after every update.
+> **This deck-only procedure lands `zdeck` with the `cp -r jetson/zdeck` step
+> above — nothing else in *these* commands does.** `zodiac-deck.service` runs
+> `-m zdeck` with `WorkingDirectory=/opt/zodiac/jetson`; `pyproject.toml` packages
+> only `zvision` (the deck's StreamDeck/Pillow deps are deliberately kept out of
+> zvision's env), so a `pip install` of the jetson package never carries `zdeck`.
+> A plain `git clone` to `/opt/zodiac` already has the checkout in place, and
+> `scripts/install.sh` run from elsewhere now copies `zdeck` alongside `zvision`
+> too (DOC-4, 2026-08-22). Only when you provision the deck by hand as above
+> *without* running `install.sh` is this `cp` required — re-copy after each update.
 
 Run it by hand instead: `/opt/zodiac-deck/venv/bin/python -m zdeck --dmx fake`
 

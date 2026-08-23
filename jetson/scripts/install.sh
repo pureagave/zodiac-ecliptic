@@ -12,9 +12,14 @@ SRC="$(cd "$(dirname "$0")/.." && pwd)"
 # the whole install before the service unit was ever written. Only copy when
 # provisioning from a checkout somewhere else.
 if [[ "${SRC}" != "${DEST}" ]]; then
-  echo ">> installing zvision from ${SRC} to ${DEST}"
+  echo ">> installing zvision + zdeck from ${SRC} to ${DEST}"
   sudo mkdir -p "${DEST}"
   sudo cp -r "${SRC}/zvision" "${DEST}/"
+  # zdeck rides along so an install-from-elsewhere box has the deck package that
+  # the separately-installed zodiac-deck.service runs as `-m zdeck` from ${DEST}
+  # (DECK.md). Its venv + StreamDeck/Pillow deps are still DECK.md's job — this
+  # only lands the source, closing the ModuleNotFoundError gap (DOC-4).
+  sudo cp -r "${SRC}/zdeck" "${DEST}/"
 else
   echo ">> running from ${DEST} — service will use this checkout directly"
 fi
