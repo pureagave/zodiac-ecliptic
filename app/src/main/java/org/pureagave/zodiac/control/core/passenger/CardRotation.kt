@@ -1,6 +1,23 @@
 package org.pureagave.zodiac.control.core.passenger
 
 /**
+ * How strongly [CardRotation.view] should hold the current card, replacing a
+ * plain boolean because the passenger MAP card needs a *stronger* hold than
+ * the parked-art case: both pause the dwell clock, but only [HARD] also
+ * defers interrupts, because a finger is physically on the glass.
+ */
+enum class RotationHold {
+    /** No hold — normal rotation. */
+    NONE,
+
+    /** Pause the dwell clock; interrupts still barge in (the parked-art hold, pinned behaviour). */
+    SOFT,
+
+    /** Pause the dwell clock AND defer interrupts without clearing them — a finger is on the glass. */
+    HARD,
+}
+
+/**
  * Decides which passenger card is on screen: a timed rotation that events can
  * barge into.
  *
@@ -22,6 +39,8 @@ package org.pureagave.zodiac.control.core.passenger
 class CardRotation(
     private val dwellMs: Long = DEFAULT_DWELL_MS,
     private val interruptMs: Long = DEFAULT_INTERRUPT_MS,
+    private val interruptMaxMs: Long = INTERRUPT_MAX_CONTINUOUS_MS,
+    private val steadyGuaranteeMs: Long = STEADY_GUARANTEE_MS,
 ) {
     private var index = 0
     private var lastAdvanceMs = Long.MIN_VALUE
@@ -29,11 +48,24 @@ class CardRotation(
     private var interruptUntilMs = 0L
     private var heldElapsedMs = 0L
 
+    // Phase 2b — interrupt-layer occupancy cap + guaranteed steady window.
+    // `interruptVisible` is whatever the *previous* call to [view] returned:
+    // true iff it was CardReason.INTERRUPT. The other two fields are only
+    // meaningful relative to a true/false edge of that flag — see
+    // [noteInterruptTransition].
+    private var interruptVisible = false
+    private var interruptShownSinceMs = 0L
+    private var steadyUntilMs = 0L
+
     /**
      * Raise [card] over the rotation until [interruptMs] has passed. A second
      * interrupt of the same card re-arms the timer (a run of bumps holds the
      * gauge up); a different one takes over immediately, because the newest
      * event is the one the passenger just felt.
+     *
+     * A re-arm is not a guarantee of display: [view] may still defer it — see
+     * [interruptMaxMs] and [steadyGuaranteeMs] — without clearing it, so a
+     * still-fresh event shows the moment it is allowed to.
      */
     fun interruptWith(
         card: PassengerCard,
@@ -47,39 +79,65 @@ class CardRotation(
      * What to show at [nowMs], given the cards that currently have data.
      * Returns null only when nothing at all is available.
      *
-     * @param hold keep the current card up instead of advancing. Used when the
-     *   vehicle has stopped next to something worth reading: parked is exactly
-     *   when passengers have time for a long description, and rotating it away
-     *   mid-sentence is the most annoying thing this display could do. The
-     *   rotation clock is *paused* rather than ignored, so releasing the hold
-     *   resumes the current card's remaining dwell rather than instantly
-     *   flipping — otherwise pulling away would snatch the card at the moment
-     *   someone looked back up.
+     * @param hold keep the current card up instead of advancing, graded by how
+     *   strongly. [RotationHold.NONE] rotates normally. [RotationHold.SOFT]
+     *   pauses the dwell clock — used when the vehicle has stopped next to
+     *   something worth reading: parked is exactly when passengers have time
+     *   for a long description, and rotating it away mid-sentence is the most
+     *   annoying thing this display could do — but a fresh interrupt still
+     *   barges in, because a bump the passenger just felt deserves its moment
+     *   even over a held ART card. [RotationHold.HARD] pauses the dwell clock
+     *   *and* defers interrupts without clearing them: a finger is on the
+     *   glass (the interactive MAP card), and yanking the screen away to show
+     *   an unrelated gauge mid-gesture would be worse than the interrupt
+     *   arriving a few seconds late. Either grade's dwell pause resumes the
+     *   current card's remaining dwell on release rather than instantly
+     *   flipping — otherwise pulling away/releasing would snatch the card at
+     *   the moment someone looked back up.
+     *
+     *   A finger on the glass is not the only thing that can defer an
+     *   interrupt: the interrupt *layer* itself is bounded (see
+     *   [interruptMaxMs], [steadyGuaranteeMs]) so that a continuously
+     *   re-armed event — an approaching art piece, a run of street crossings
+     *   — cannot monopolize the screen and starve the steady rotation
+     *   (MAP, SUN, …) of airtime. That bound is orthogonal to [hold]: even a
+     *   [RotationHold.SOFT] barge-in is deferred while a guarantee window is
+     *   open.
      */
     fun view(
         nowMs: Long,
         available: List<PassengerCard>,
-        hold: Boolean = false,
+        hold: RotationHold = RotationHold.NONE,
     ): PassengerView? {
         if (available.isEmpty()) {
             interrupt = null
+            noteInterruptTransition(shown = false, nowMs = nowMs)
             return null
         }
 
         val pending = interrupt
-        if (pending != null) {
-            // An interrupt for a card with no data is dropped rather than shown
-            // empty — the event still happened, but we've nothing to draw.
-            if (nowMs < interruptUntilMs && pending in available) {
-                return PassengerView(pending, CardReason.INTERRUPT)
-            }
+        val fresh = pending != null && nowMs < interruptUntilMs && pending in available
+        val showInterrupt = fresh && interruptAllowed(hold, nowMs)
+        noteInterruptTransition(shown = showInterrupt, nowMs = nowMs)
+
+        if (showInterrupt) {
+            return PassengerView(pending!!, CardReason.INTERRUPT)
+        }
+        if (hold != RotationHold.HARD && !fresh) {
+            // Genuinely stale (past interruptUntilMs) or no longer in
+            // available — drop it, same as before Phase 2b: the event still
+            // happened, but we've nothing to draw, or nobody re-raises a
+            // stale one. A *fresh* interrupt blocked only by HARD, the cap,
+            // or the guarantee window is left armed with its original expiry
+            // — "defer without clearing" — so it can still show later.
             interrupt = null
         }
 
         if (lastAdvanceMs == Long.MIN_VALUE) lastAdvanceMs = nowMs
-        if (hold) {
+        if (hold != RotationHold.NONE) {
             // Slide the dwell window forward with the clock so no time accrues
-            // against the held card.
+            // against the held card. Same treatment for SOFT and HARD — the
+            // two grades differ only in interrupt handling above.
             lastAdvanceMs = nowMs - heldElapsedMs
         } else {
             heldElapsedMs = (nowMs - lastAdvanceMs).coerceIn(0L, dwellMs)
@@ -100,11 +158,103 @@ class CardRotation(
         return PassengerView(available[index], CardReason.ROTATION)
     }
 
+    /**
+     * The two layer-level gates, independent of [hold]'s own interrupt guard
+     * (the caller has already established the interrupt is [fresh]):
+     * - the guarantee window from a previous shown→hidden transition must
+     *   have elapsed ([steadyUntilMs], `>=` — the boundary tick is free), and
+     * - the layer must not already have been visible continuously for
+     *   [interruptMaxMs] (`<` — at exactly the cap the layer releases).
+     *
+     * Split out of [view] to keep that method's branching about *dispatch*
+     * (show / defer / rotate) rather than growing a compound boolean inline.
+     */
+    private fun interruptAllowed(
+        hold: RotationHold,
+        nowMs: Long,
+    ): Boolean {
+        if (hold == RotationHold.HARD) return false
+        val windowOver = nowMs >= steadyUntilMs
+        val underCap = !interruptVisible || nowMs - interruptShownSinceMs < interruptMaxMs
+        return windowOver && underCap
+    }
+
+    /**
+     * One uniform bookkeeping rule for the interrupt layer's occupancy, run on
+     * every call to [view] regardless of *why* [shown] is what it is — a HARD
+     * hold, the cap, the window, genuine expiry, or an empty `available` list
+     * are all alike here:
+     * - not shown → shown: the occupancy clock starts now.
+     * - shown → not shown: a fresh guarantee window opens from now.
+     * - no edge: no bookkeeping. In particular, an interrupt that was armed
+     *   and then went stale *without ever displaying* (deferred the whole
+     *   time by a hold, the cap, or a window) never triggers this edge, so it
+     *   grants no window of its own — only actual occupancy buys the
+     *   rotation its recovery time.
+     */
+    private fun noteInterruptTransition(
+        shown: Boolean,
+        nowMs: Long,
+    ) {
+        if (shown && !interruptVisible) {
+            interruptVisible = true
+            interruptShownSinceMs = nowMs
+        } else if (!shown && interruptVisible) {
+            interruptVisible = false
+            steadyUntilMs = nowMs + steadyGuaranteeMs
+        }
+    }
+
     companion object {
         /** Long enough to read a card, short enough that the screen never feels static. */
         const val DEFAULT_DWELL_MS: Long = 25_000L
 
         /** How long an event holds the screen before the rotation resumes. */
         const val DEFAULT_INTERRUPT_MS: Long = 8_000L
+
+        /**
+         * How long the interrupt layer — ART's approach cone, WHERE's street
+         * crossings, any future interrupt card — may hold the screen
+         * continuously, across re-arms *and* across a switch to a different
+         * interrupt card, before the steady rotation is guaranteed a turn.
+         * 1.5x [DEFAULT_INTERRUPT_MS]: a run of bumps still holds the gauge up
+         * meaningfully longer than one display, but not forever. Measured on
+         * hardware 2026-08-22: without this bound, ART's every-tick re-arm
+         * near the Man held the screen indefinitely (see
+         * `design/PASSENGER-UI-split-spec.md` Phase 2b).
+         */
+        const val INTERRUPT_MAX_CONTINUOUS_MS: Long = 12_000L
+
+        /**
+         * How long the steady rotation is guaranteed to run, interrupt-free,
+         * immediately after the interrupt layer stops being shown for any
+         * reason (natural expiry, the occupancy cap tripping, or the
+         * `available` list going empty). One full card's dwell.
+         */
+        const val STEADY_GUARANTEE_MS: Long = DEFAULT_DWELL_MS
     }
 }
+
+/**
+ * Which [RotationHold] grade applies right now, given the card currently on
+ * screen and the two independent hold conditions the passenger screen's
+ * ticker tracks: a touched MAP card ([mapHoldActive]) and a parked-next-to-art
+ * ART card ([parkedArtHoldActive]). The two are mutually exclusive by
+ * construction — each only matters for its own card — so this is a pure
+ * combination of already-decided signals, not a new policy of its own.
+ *
+ * Pulled out of the screen's ticker (rather than a `when` inlined there) so
+ * the composable's own cyclomatic complexity stays about timing and
+ * dispatch, not this decision — and so the combination is unit-testable on
+ * its own.
+ */
+fun currentRotationHold(
+    currentCard: PassengerCard?,
+    mapHoldActive: Boolean,
+    parkedArtHoldActive: Boolean,
+): RotationHold =
+    when {
+        currentCard == PassengerCard.MAP && mapHoldActive -> RotationHold.HARD
+        currentCard == PassengerCard.ART && parkedArtHoldActive -> RotationHold.SOFT
+        else -> RotationHold.NONE
+    }

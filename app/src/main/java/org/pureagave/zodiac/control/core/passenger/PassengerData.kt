@@ -26,6 +26,11 @@ fun availablePassengerCards(inputs: PassengerInputs): List<PassengerCard> =
             // Needs a real street or clock position — "OPEN PLAYA" alone is a
             // fine thing to say, so an ego fix is enough.
             PassengerCard.WHERE -> inputs.hasFix
+            // Both gates are load-bearing: no fix means nowhere to centre the
+            // camera (mirrors WHERE); no loaded map means a blank rectangle. A
+            // failed map load removes the card rather than showing a retry
+            // affordance — see the KDoc on PassengerMapCard.kt's mapCard.
+            PassengerCard.MAP -> inputs.hasFix && inputs.hasMap
             // Silence is data (the beat just dropped out); no beacon is not.
             PassengerCard.AUDIO -> inputs.hasAudio
             // The Jetson feed has to be genuinely live — a demo crowd shown to
@@ -40,7 +45,14 @@ fun availablePassengerCards(inputs: PassengerInputs): List<PassengerCard> =
         }
     }
 
-/** The minimum the availability rules need to know. */
+/**
+ * The minimum the availability rules need to know.
+ *
+ * [hasFix] is `state.egoFix != null` (`PassengerScreen.kt`'s `passengerInputs`)
+ * — source-agnostic by construction: a Fire with no GNSS of its own, running
+ * purely on the beacon's NET fix, still counts. That's the normal fleet case
+ * and needs no special-casing here.
+ */
 data class PassengerInputs(
     val hasFix: Boolean = false,
     val hasAudio: Boolean = false,
@@ -48,6 +60,8 @@ data class PassengerInputs(
     val hasShock: Boolean = false,
     val odometer: Odometer? = null,
     val artAhead: Int = 0,
+    /** `state.playaMap != null` — a failed/unloaded map removes [PassengerCard.MAP]. */
+    val hasMap: Boolean = false,
 )
 
 /**

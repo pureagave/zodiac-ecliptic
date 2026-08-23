@@ -54,10 +54,48 @@ class PassengerDataTest {
                     hasShock = true,
                     odometer = Odometer(tripMeters = 1.0, totalMeters = 2.0),
                     artAhead = 3,
+                    hasMap = true,
                 ),
             )
 
         assertEquals(PassengerCard.entries.toList(), cards)
+    }
+
+    @Test
+    fun map_requires_both_fix_and_map() {
+        // Full 2x2 truth table: an `||` mutant and a dropped-`hasMap` mutant
+        // each fail a different one of these rows.
+        assertFalse(
+            availablePassengerCards(PassengerInputs(hasFix = false, hasMap = false)).contains(PassengerCard.MAP),
+        )
+        assertFalse(
+            availablePassengerCards(PassengerInputs(hasFix = true, hasMap = false)).contains(PassengerCard.MAP),
+        )
+        assertFalse(
+            availablePassengerCards(PassengerInputs(hasFix = false, hasMap = true)).contains(PassengerCard.MAP),
+        )
+        assertTrue(
+            availablePassengerCards(PassengerInputs(hasFix = true, hasMap = true)).contains(PassengerCard.MAP),
+        )
+    }
+
+    @Test
+    fun map_rotates_directly_after_where() {
+        // Pins the enum-order decision: address, then the map of it.
+        val cards =
+            availablePassengerCards(
+                PassengerInputs(
+                    hasFix = true,
+                    hasAudio = true,
+                    visionLive = true,
+                    hasShock = true,
+                    odometer = Odometer(1.0, 2.0),
+                    artAhead = 1,
+                    hasMap = true,
+                ),
+            )
+
+        assertEquals(listOf(PassengerCard.WHERE, PassengerCard.MAP), cards.take(2))
     }
 
     @Test

@@ -45,6 +45,8 @@ import org.pureagave.zodiac.control.core.passenger.PassengerView
 import org.pureagave.zodiac.control.core.passenger.approachingArt
 import org.pureagave.zodiac.control.core.passenger.artNearby
 import org.pureagave.zodiac.control.core.passenger.availablePassengerCards
+import org.pureagave.zodiac.control.core.passenger.currentRotationHold
+import org.pureagave.zodiac.control.core.passenger.mapTouchHoldActive
 import org.pureagave.zodiac.control.core.passenger.passengerLocationLine
 import org.pureagave.zodiac.control.core.telemetry.AudioLevel
 import org.pureagave.zodiac.control.core.vision.VisionFeed
@@ -52,6 +54,7 @@ import org.pureagave.zodiac.control.data.art.ArtImageStore
 import org.pureagave.zodiac.control.ui.RetroFont
 import org.pureagave.zodiac.control.ui.concepts.ConceptTheme
 import org.pureagave.zodiac.control.ui.state.CockpitUiState
+import org.pureagave.zodiac.control.ui.viewmodel.CockpitViewModel
 import java.time.LocalTime
 import kotlin.math.roundToInt
 
@@ -71,11 +74,13 @@ import kotlin.math.roundToInt
 @Composable
 fun passengerScreen(
     state: CockpitUiState,
+    viewModel: CockpitViewModel,
     theme: ConceptTheme,
     audio: AudioLevel?,
-    now: LocalTime,
-    sunrise: LocalTime?,
-    sunset: LocalTime?,
+    // Bundled rather than three loose LocalTime params — adding viewModel on
+    // top of them would have pushed this past detekt's LongParameterList
+    // functionThreshold (7); SunClock already existed for exactly this shape.
+    sun: SunClock,
     artImages: ArtImageStore? = null,
 ) {
     val rotation = remember { CardRotation() }
@@ -83,6 +88,20 @@ fun passengerScreen(
     var tickMs by remember { mutableLongStateOf(0L) }
     var lastShockCount by remember { mutableStateOf<Double?>(null) }
     var lastStreet by remember { mutableStateOf<String?>(null) }
+
+    // Raw touch telemetry for the MAP card's carousel hold (see
+    // core/passenger/PassengerMapCardModel.kt's mapTouchHoldActive). Hoisted
+    // here — not inside mapCard — because the hold decision has to feed
+    // rotation.view() in the ticker below, the one legal call site.
+    var mapPointerDown by remember { mutableStateOf(false) }
+    var mapLastTouchMs by remember { mutableStateOf<Long?>(null) }
+    val onMapTouch: (Boolean) -> Unit = { down ->
+        mapPointerDown = down
+        // Stamped from the ticker's own tick clock, never wall time — it's
+        // the same clock CardRotation runs on, which is what makes the grace
+        // window comparable to dwell.
+        mapLastTouchMs = tickMs
+    }
 
     val projection = remember { PlayaProjection(GoldenSpike.ACTIVE) }
     val egoPoint = state.egoFix?.location?.let(projection::project)
@@ -144,7 +163,15 @@ fun passengerScreen(
     LaunchedEffect(Unit) {
         while (true) {
             val (cards, isStopped, hasArt) = latest.value
-            val hold = isStopped && hasArt && view?.card == PassengerCard.ART
+            // Dispatch only — the grade itself is core's currentRotationHold,
+            // and the two conditions feeding it (mapTouchHoldActive, the
+            // parked+hasArt pair) are each already-decided signals.
+            val hold =
+                currentRotationHold(
+                    currentCard = view?.card,
+                    mapHoldActive = mapTouchHoldActive(mapPointerDown, mapLastTouchMs, tickMs),
+                    parkedArtHoldActive = isStopped && hasArt,
+                )
             view = rotation.view(tickMs, cards, hold = hold)
             tickMs += TICK_MS
             delay(TICK_MS)
@@ -196,8 +223,10 @@ fun passengerScreen(
                     artImage = artImage,
                     parked = stopped,
                     motion = PassengerMotion(phase, sweep),
-                    sun = SunClock(now, sunrise, sunset),
+                    sun = sun,
                 ),
+            viewModel = viewModel,
+            onMapTouch = onMapTouch,
         )
     }
 }
@@ -243,10 +272,13 @@ private fun passengerCard(
     view: PassengerView,
     theme: ConceptTheme,
     ctx: PassengerContext,
+    viewModel: CockpitViewModel,
+    onMapTouch: (Boolean) -> Unit,
 ) {
     val urgent = view.reason == CardReason.INTERRUPT
     when (view.card) {
         PassengerCard.WHERE -> whereCard(ctx.state, theme, urgent)
+        PassengerCard.MAP -> mapCard(ctx.state, viewModel, theme, onMapTouch)
         PassengerCard.AUDIO -> audioCard(theme, ctx.audio, ctx.motion.phase)
         PassengerCard.SOULS -> soulsCard(ctx.state, theme, ctx.motion.sweep)
         PassengerCard.BUMP -> bumpCard(ctx.state, theme, urgent)
@@ -455,6 +487,7 @@ private fun passengerInputs(
         hasShock = state.shockAlertG != null || state.beaconReadout.shockG != null,
         odometer = state.odometer,
         artAhead = artCount,
+        hasMap = state.playaMap != null,
     )
 
 /**

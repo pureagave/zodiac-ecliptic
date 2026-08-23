@@ -136,6 +136,15 @@ data class PlayaMapPanelStyle(
     val egoStyle: EgoStyle = EgoStyle.TRIANGLE,
     val egoColor: Color? = null,
     val allowTilt: Boolean = true,
+    /**
+     * When false, two-finger twist is ignored — heading is the only thing
+     * that ever rotates the display (via track-up follow). The passenger map
+     * card sets this false: heading already drives track-up rotation there,
+     * and a deliberate manual twist would fight auto-follow the instant the
+     * vehicle turns. Mirrors [lockCameraToEgo]'s no-op pattern, one lambda
+     * over. Cockpit call sites all keep the default and are unaffected.
+     */
+    val allowRotate: Boolean = true,
     val clipCircular: Boolean = false,
     val showRetroGrid: Boolean = false,
     val sweep: SweepOverlay? = null,
@@ -312,7 +321,7 @@ fun playaMapPanel(
                             }
                         },
                     onZoom = viewModel::setPixelsPerMeter,
-                    onRotate = viewModel::nudgeViewRotation,
+                    onRotate = rotateCallback(style, viewModel),
                 ),
     ) {
         // In TILT the whole map *plane* — base features, route, contacts, and the
@@ -443,6 +452,18 @@ private fun mapLoadErrorOverlay(
         }
     }
 }
+
+/**
+ * The two-finger rotate callback for [Modifier.cockpitTouchInput], gated by
+ * [PlayaMapPanelStyle.allowRotate]. Extracted out of [playaMapPanel] to keep
+ * that composable's cyclomatic complexity down — a plain `if` inline there
+ * pushed it over detekt's threshold. When disabled this is a no-op, exactly
+ * the pattern [PlayaMapPanelStyle.lockCameraToEgo] already uses to no-op pan.
+ */
+private fun rotateCallback(
+    style: PlayaMapPanelStyle,
+    viewModel: CockpitViewModel,
+): (Float) -> Unit = if (style.allowRotate) viewModel::nudgeViewRotation else { _ -> }
 
 /**
  * Cache the meter-space backdrop grid as a single Path keyed on the

@@ -12,6 +12,15 @@ enum class PassengerCard {
     /** Big playa address: clock + street, updating as the vehicle drives. */
     WHERE,
 
+    /**
+     * Interactive, track-up, auto-following live BRC map centred on the
+     * vehicle — pan and pinch-zoom, no rotate, recenter to return. Right
+     * after [WHERE] by design: address, then the map of it, the two "where
+     * are we" answers running back-to-back. See
+     * `design/PASSENGER-UI-split-spec.md` Phase 2.
+     */
+    MAP,
+
     /** Oscilloscope driven by the beacon mic's `$ZAUD` level. */
     AUDIO,
 

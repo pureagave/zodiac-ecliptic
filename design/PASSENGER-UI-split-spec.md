@@ -526,6 +526,175 @@ card, the panel's `allowRotate` flag, screen wiring. Commit
 phase, give `README.md` its one-line feature mention (public snapshot, not a
 progress log).
 
+**Amended 2026-08-22:** Phase 2's code exists uncommitted in the working tree
+and must **ship together with the Phase 2b starvation fix below** — the map
+card without 2b never reaches the screen in the city, which hardware
+measurement proved same-day.
+
+---
+
+## Phase 2b — interrupt-starvation fix (ships WITH Phase 2)
+
+### The measured problem
+
+On hardware (2026-08-22, fake ego): parked at the Man among 275+ placed
+pieces, the ART approach interrupt — 400 m radius, 160° cone
+(`core/passenger/ArtApproach.kt:89-95`), **re-armed every tick** by design
+(`PassengerScreen.kt:137-142`; the re-arm is what holds the card through a
+pass) — keeps `interruptUntilMs` permanently ahead of the clock, so the ART
+card shows *forever* (6+ consecutive captures, all ART). Driving the street
+grid, each crossing re-arms WHERE the same way. Since the vehicle is in or
+near the city essentially always, the steady-rotation cards — **MAP, SUN,
+steady-WHERE** — get no airtime at all. The MAP card could only be reached by
+driving ~6 km into empty deep playa or by touching the screen (the HARD hold,
+which works as designed). An endless art/crossing slideshow is not the
+carousel; a passenger must reliably *see* the map come around. (DECIDED —
+Rob, 2026-08-22: cap the interrupts' monopoly; do not kill their timeliness.)
+
+The bug is structural, not a tuning error: `interruptWith` re-arms extend the
+display without bound, and nothing in `CardRotation` owes the steady rotation
+anything. The fix therefore lives **entirely in `CardRotation`** — no changes
+to the interrupt sources, `ArtApproach`, or the screen's ticker; ART's
+every-tick re-arm *stays*, because it is the correct freshness signal (it is
+what brings ART back after each guaranteed window while a piece is still
+ahead).
+
+### Chosen design: occupancy cap + guaranteed steady window
+
+Two rules, two timestamps, on top of the existing (uncommitted Phase 2)
+engine — the HARD-hold defer machinery is the model, and both grades of
+`RotationHold` keep their exact semantics:
+
+1. **Occupancy cap.** The interrupt *layer* (any card shown with
+   `CardReason.INTERRUPT`, across re-arms **and across card switches** — the
+   cap is on the layer, not per card, so an ART↔WHERE alternation cannot
+   collude past it) may hold the screen continuously for at most
+   `interruptMaxMs`. Default **12 s** = 1.5× the 8 s display: a run of bumps
+   still "holds the gauge up" meaningfully longer than one display, but not
+   forever.
+2. **Guaranteed steady window.** On **every** transition of the layer from
+   shown to not-shown — natural expiry, cap trip, data loss, any reason — the
+   engine grants `steadyGuaranteeMs` of interrupt-free steady rotation.
+   Default **25 s = `DEFAULT_DWELL_MS`**: one full card's dwell. During the
+   window, arms are **deferred, not deleted** (identical semantics to the
+   HARD hold): the pending interrupt keeps its own `interruptUntilMs` expiry,
+   so at window end a still-fresh event shows and a stale one has silently
+   expired — nobody re-raises stale events, nobody drops fresh ones.
+
+Steady-state behaviour in the measured worst case (continuous re-arm at the
+Man): 12 s ART → 25 s steady card → 12 s ART → … — interrupt duty ≤ ~32%,
+steady ≥ ~68%; one-shot storms (street grid) bound at 8/33 ≈ 24%. The
+rotation clock keeps running beneath interrupt displays (the existing
+catch-up loop, `CardRotation.kt:116-122`), so successive windows land on
+successive/precessing cards; with all eight cards available, MAP gets a full
+uninterrupted dwell roughly every 4–5 minutes worst case — against **never**
+today. First interrupt after quiet still shows on the next tick (no window
+exists until an interrupt has actually displayed), so timeliness out of the
+gate is unchanged.
+
+**Alternatives considered and rejected:**
+
+- **(c) same-source dedup** (don't re-arm for the same piece/street): fixes
+  only the parked case. Driving the Esplanade, every piece and every street
+  is *genuinely new* — the slideshow continues with dedup in place. It also
+  needs event identity plumbed into the engine (`interruptWith` has no
+  payload), and parked heading-jitter can flip the chosen piece anyway.
+- **(b) sliding-window duty budget** (leaky bucket / ring buffer): reaches
+  the same bound as the cap+window with strictly more machinery and a
+  hysteresis nobody can eyeball from a log line. Two timestamps beat an
+  accounting scheme that has to be explained twice.
+
+### The `CardRotation` change (pure; nothing else touches)
+
+- Constructor gains two defaulted params, mirroring `dwellMs`/`interruptMs`:
+  `interruptMaxMs: Long = INTERRUPT_MAX_CONTINUOUS_MS` (new companion const,
+  12 000) and `steadyGuaranteeMs: Long = STEADY_GUARANTEE_MS` (new companion
+  const, = `DEFAULT_DWELL_MS`). Injectable for tests, like everything else
+  in this class.
+- Two private fields: `interruptShownSinceMs` (when the layer last *took*
+  the screen; meaningful only while visible) and `steadyUntilMs` (end of the
+  current guarantee window; 0 = none), plus an `interruptVisible` flag.
+- `view()` — the pending-interrupt block (currently guarded by
+  `hold != RotationHold.HARD`, `CardRotation.kt:93-106`) gains the layer
+  gate. Show the pending interrupt only when **all** hold: not HARD-held
+  (unchanged), `nowMs >= steadyUntilMs` (window over — `>=`: the boundary
+  tick is free), fresh (`nowMs < interruptUntilMs`, unchanged), in
+  `available` (unchanged), and `!interruptVisible || nowMs −
+  interruptShownSinceMs < interruptMaxMs` (under the cap; at exactly the cap
+  the layer releases).
+- Bookkeeping is one uniform rule: when this call shows the layer and the
+  previous call didn't ⇒ `interruptVisible = true; interruptShownSinceMs =
+  nowMs`. When this call does *not* show the layer and the previous call did
+  ⇒ `interruptVisible = false; steadyUntilMs = nowMs + steadyGuaranteeMs`.
+  No transition, no bookkeeping. (A stale arm that never displayed grants
+  **no** window — only actual occupancy buys the rotation its recovery time.
+  The empty-`available` blackout path may fire the transition; harmless,
+  untested by design.)
+- One deliberate semantic nuance, documented in the KDoc: during a guarantee
+  window, interrupts defer even past a **SOFT** hold — the window is a
+  property of the layer, orthogonal to hold grades. The pinned
+  `an_event_still_interrupts_a_held_card` behaviour is untouched *outside* a
+  window (its setup has no prior interrupt display, so it keeps passing
+  as-is — verify, don't edit it).
+- `interruptWith` is unchanged. Re-arms during a window or past the cap
+  land in the same pending slot with a fresh expiry — deferral does the rest.
+- If `view()`'s cyclomatic count trips detekt, extract the gate into a
+  private `interruptAllowed(nowMs, hold)` — split the decision, don't bump
+  the threshold.
+
+### Tests (`CardRotationTest` additions — every one paired)
+
+| Test | Kills the mutant that… |
+|---|---|
+| `a_continuously_rearmed_interrupt_is_capped_then_yields_a_full_steady_window` (re-arm ART every tick; INTERRUPT until exactly the cap, then ROTATION for the full window despite re-arms, then INTERRUPT again) | drops the cap, drops the window, or lets re-arms pierce the window — **the measured Man-parking case, and the headline** |
+| `alternating_interrupt_cards_share_one_occupancy_cap` (ART/WHERE alternating every 2 s cap out together at `interruptMaxMs` total) | resets occupancy on a card switch (the collusion loophole) |
+| `a_first_interrupt_after_quiet_shows_immediately` (steady rotation, no prior display ⇒ interrupt shows next tick) | positive control — locks the layer out permanently or seeds a window at t=0 |
+| `a_one_shot_interrupt_earns_a_window_when_it_expires` (single WHERE: 8 s display, expiry ⇒ ROTATION; a fresh arm during the window defers to window end) | grants the window only on cap trips (the street-grid storm would still monopolize) |
+| `an_arm_that_never_displayed_grants_no_window` (arm during a window, let it go stale ⇒ at window end a new fresh arm shows immediately) | chains windows off stale drops, locking interrupts out forever — negative control for the window-granting rule |
+| `a_deferred_arm_shows_at_window_end_iff_still_fresh` (arm at end−2 s ⇒ shows at window end; arm at start+1 s, one-shot ⇒ never shows) | deletes deferred arms, or extends their freshness while deferred |
+| `window_boundary_is_inclusive_release` (at exactly `steadyUntilMs` a fresh pending shows; at exactly `interruptShownSinceMs + interruptMaxMs` the layer releases) | off-by-ones either boundary |
+| `soft_hold_defers_during_a_guarantee_window` (capped burst, then SOFT hold + fresh arm ⇒ held card stays until window end) | exempts SOFT from the window — pairs with the untouched pinned barge test as its positive control |
+| `hard_hold_and_cap_compose` (existing HARD tests pass unchanged; new: release from HARD after a window has lapsed with a fresh pending ⇒ it shows) | breaks HARD's defer while adding the second defer path |
+| `the_rotation_lands_where_the_clock_says_after_a_capped_burst` (index after burst + window matches elapsed dwells — extends the existing catch-up tests) | freezes the dwell clock inside the new bookkeeping |
+
+All pure, all on the injected clock — no Compose, no device, exactly why this
+engine is a pure class.
+
+### On-device verification (replaces nothing — adds to Phase 2's list)
+
+- Park the fake ego at the Man: ART alternates with steady cards (~12 s /
+  ~25 s), and the MAP card appears on its own within a few minutes —
+  the capture that today shows 6+ consecutive ART frames must show the
+  alternation.
+- Drive the street grid: WHERE crossings still flash promptly, but steady
+  cards visibly cycle between them.
+- Touch the map mid-window and mid-burst: HARD hold still defers everything;
+  release behaves per Phase 2.
+- Deep-playa sanity: far from art and streets, the rotation is pure steady —
+  the fix must be invisible when there is nothing to fix.
+
+### Gates + commit
+
+Phase 2 is uncommitted; **2 and 2b gate and commit together** (2b's engine
+change is what makes 2's card reachable). Run the unscoped gate, then either
+one commit or the 2a/2b/2c sequence — with the starvation fix folded into
+the core commit — ending
+(`feat(app): PASSENGER-UI 2 — interactive live-map card + interrupt airtime guarantee`),
+`SYNC.md` entry (including the measured starvation numbers), push.
+
+### Fork noted (decided by recommendation unless Rob overrides)
+
+**Should a fresh *different-card* interrupt pierce the guarantee window?**
+(E.g. a bump the passenger just physically felt, arriving mid-window.)
+Piercing keeps bumps timelier — but in the city near-everything is "fresh"
+(every street, every piece), which is precisely the measured failure:
+ART↔WHERE alternation would re-create the slideshow through the loophole.
+**Recommended and specced: the window is inviolable.** Worst-case cost: a
+fresh event waits ≤ 25 s and shows only if still within its own 8 s
+freshness — a bump card arriving late is garnish delayed; the map never
+appearing is the product failing. One constant (`steadyGuaranteeMs`) tunes
+the trade on the vehicle.
+
 ---
 
 ## Constraints recap (from CLAUDE.md — the implementer is bound by these)
@@ -592,3 +761,9 @@ pan + zoom. Original open forks kept below for the record.)
    interrupts raised during a hold) is one line. *Recommended: as specced —
    a bump the vehicle just took is still worth its moment three seconds
    later; an expired one stays expired.*
+6. **(Phase 2b) Is the guaranteed steady window inviolable, or may a fresh
+   different-card interrupt pierce it?** See Phase 2b's "Fork noted".
+   *Recommended (and specced): inviolable — in the city near-everything is
+   "fresh", so piercing re-creates the measured slideshow; the 12 s / 25 s
+   constants are the tuning knobs if the balance feels wrong on the
+   vehicle.*

@@ -36,6 +36,7 @@ import org.pureagave.zodiac.control.ui.debug.logViewerPanel
 import org.pureagave.zodiac.control.ui.ops.addressEntryPanel
 import org.pureagave.zodiac.control.ui.ops.passingCallout
 import org.pureagave.zodiac.control.ui.ops.streetCrossingPopup
+import org.pureagave.zodiac.control.ui.passenger.SunClock
 import org.pureagave.zodiac.control.ui.passenger.passengerScreen
 import org.pureagave.zodiac.control.ui.viewmodel.CockpitViewModel
 import java.time.LocalDate
@@ -97,11 +98,10 @@ fun cockpitScreen(
                 if (passengerMode) {
                     passengerScreen(
                         state = state,
+                        viewModel = viewModel,
                         theme = ThemeTracker,
                         audio = audio,
-                        now = LocalTime.now(),
-                        sunrise = sun?.sunrise,
-                        sunset = sun?.sunset,
+                        sun = SunClock(now = LocalTime.now(), sunrise = sun?.sunrise, sunset = sun?.sunset),
                         artImages = artImages,
                     )
                 } else {

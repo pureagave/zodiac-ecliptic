@@ -162,11 +162,16 @@ presentational — all three read the same state.
 
 **Displays and operations**
 - **Passenger display**: a self-running card carousel for riders — playa address,
-  a mic-driven oscilloscope, thermal contacts around the vehicle, an impact
+  an **interactive track-up live map** (pan/zoom, auto-follows the vehicle), a
+  mic-driven oscilloscope, thermal contacts around the vehicle, an impact
   "bump" gauge, trip odometer, sunrise/sunset countdown, nearest art. A card with
   no data is dropped from the rotation rather than shown empty, and the "souls
-  detected" card only appears on a genuinely live vision feed. Enabled per device
-  by a hidden top-right long-press, which also hides the concept switcher.
+  detected" card only appears on a genuinely live vision feed. The **passenger
+  Fires default to this automatically** (by hardware — non-OLED = passenger),
+  leaving the Samsung hero + driver on the full cockpit; the hidden top-right
+  long-press is an override. To keep the map and other steady cards from being
+  starved by frequent art/street-crossing interrupts near the city, interrupts
+  are capped and the steady rotation is guaranteed regular airtime.
 - **OLED burn-in mitigation**: whole-UI pixel shift (universal), a brightness
   breathe and idle dim (OLED only — gated off on Amazon devices), and an idle
   escalation ACTIVE → DIM (5 min) → DEEP_IDLE "STANDBY" screen (30 min) → app-drawn
