@@ -43,6 +43,7 @@ import org.pureagave.zodiac.control.data.nav.NavShareSender
 import org.pureagave.zodiac.control.data.playa.AssetsPlayaMapRepository
 import org.pureagave.zodiac.control.data.playa.PlayaMapBinaryCache
 import org.pureagave.zodiac.control.data.playa.PlayaMapRepository
+import org.pureagave.zodiac.control.data.power.DeviceBatterySource
 import org.pureagave.zodiac.control.data.prefs.CockpitPreferences
 import org.pureagave.zodiac.control.data.prefs.DataStoreCockpitPreferences
 import org.pureagave.zodiac.control.data.prefs.cockpitPrefsDataStore
@@ -279,6 +280,15 @@ class ZodiacApplication : Application() {
      * having to downcast through the registry.
      */
     val fakeLocationSource: FakeLocationSource by lazy { FakeLocationSource(scope = applicationScope) }
+
+    /**
+     * This device's own battery (COCKPIT-TELEMETRY-REDESIGN Phase D) —
+     * feeds MAP's CELL A tile. Started eagerly at first access, same as the
+     * other always-on sources here; no permission required.
+     */
+    val deviceBatterySource: DeviceBatterySource by lazy {
+        DeviceBatterySource(context = applicationContext).also { it.start() }
+    }
 
     /**
      * The shared-WiFi GPS + Sensor Hub receiver, hoisted out of the registry so

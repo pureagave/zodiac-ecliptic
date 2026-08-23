@@ -24,6 +24,7 @@ import org.pureagave.zodiac.control.core.sensor.LocationSourceType
 import org.pureagave.zodiac.control.core.telemetry.BeaconHealth
 import org.pureagave.zodiac.control.core.telemetry.BeaconReadout
 import org.pureagave.zodiac.control.core.telemetry.Odometer
+import org.pureagave.zodiac.control.core.telemetry.SpeedTrail
 import org.pureagave.zodiac.control.core.vision.DriverThreat
 import org.pureagave.zodiac.control.core.vision.VisionFeed
 
@@ -213,6 +214,23 @@ data class CockpitUiState(
      * which is the one place this should be read through.
      */
     val gpsUsingFallback: Boolean = false,
+    /**
+     * The last 30 minutes of [effectiveSpeedKph], time-bucketed at
+     * [org.pureagave.zodiac.control.core.telemetry.SpeedTrail.BUCKET_MS] —
+     * feeds MAP's THROTTLE TRACE tile (COCKPIT-TELEMETRY-REDESIGN Phase B).
+     * Session-scoped, not persisted: `EMPTY` on every cold start. Sampled
+     * from `effectiveSpeedKph` by a [org.pureagave.zodiac.control.ui.viewmodel.CockpitViewModel]
+     * init tick loop, never written by the UI.
+     */
+    val speedTrail: SpeedTrail = SpeedTrail.EMPTY,
+    /**
+     * This device's own battery percent from `ACTION_BATTERY_CHANGED`
+     * (via [org.pureagave.zodiac.control.data.power.DeviceBatterySource]);
+     * null = unknown, renders "—". Feeds MAP's CELL A tile
+     * (COCKPIT-TELEMETRY-REDESIGN Phase D) — a charger-failure watchdog for a
+     * mounted tablet, not a decoration.
+     */
+    val deviceBatteryPct: Int? = null,
 ) {
     /**
      * The three beacon readings the ops footer draws, bundled — they arrive on

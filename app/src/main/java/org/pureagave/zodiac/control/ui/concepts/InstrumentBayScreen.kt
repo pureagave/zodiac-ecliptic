@@ -30,10 +30,16 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import org.pureagave.zodiac.control.core.model.DEVICE_BATTERY_LOW_PCT
 import org.pureagave.zodiac.control.core.model.MapMode
+import org.pureagave.zodiac.control.core.telemetry.formatLuxValue
+import org.pureagave.zodiac.control.core.telemetry.formatShockValue
+import org.pureagave.zodiac.control.core.telemetry.luxBarFraction
+import org.pureagave.zodiac.control.core.telemetry.shockBarFraction
 import org.pureagave.zodiac.control.ui.debug.devControlPanel
 import org.pureagave.zodiac.control.ui.ops.OPS_FOOTER_ONE_LINE
 import org.pureagave.zodiac.control.ui.ops.OPS_FOOTER_TWO_LINE
@@ -122,10 +128,20 @@ fun instrumentBayScreen(
                 // Portrait: map on top, gauges + cells in a row, controls below.
                 Column(modifier = Modifier.fillMaxWidth().weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     bayMapTile(mapInputs, viewModel, state, theme, Modifier.fillMaxWidth().weight(1f))
+                    // 4 tiles, not 3: the trace tile is new (Phase B) and gives
+                    // portrait a speed representation now that speedTile is gone
+                    // (Phase C) — without stealing any map height.
                     Row(modifier = Modifier.fillMaxWidth().height(120.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         headingTile(theme, state.headingDeg, Modifier.weight(1f).fillMaxHeight())
-                        speedTile(theme, state.speedKph, Modifier.weight(1f).fillMaxHeight())
-                        cellsTile(theme, Modifier.weight(1f).fillMaxHeight())
+                        ambientShockTile(
+                            theme = theme,
+                            lux = state.ambientLux,
+                            lastShockG = state.lastShockG,
+                            shockAlertActive = state.shockAlertG != null,
+                            modifier = Modifier.weight(1f).fillMaxHeight(),
+                        )
+                        cellsTile(theme, state.deviceBatteryPct, Modifier.weight(1f).fillMaxHeight())
+                        traceTile(theme, state.speedTrail.window(System.currentTimeMillis()), Modifier.weight(1f).fillMaxHeight())
                     }
                     telemetryBox(
                         state = state,
@@ -142,18 +158,24 @@ fun instrumentBayScreen(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         headingTile(theme, state.headingDeg, Modifier.fillMaxWidth().weight(1f))
-                        speedTile(theme, state.speedKph, Modifier.fillMaxWidth().weight(1f))
+                        ambientShockTile(
+                            theme = theme,
+                            lux = state.ambientLux,
+                            lastShockG = state.lastShockG,
+                            shockAlertActive = state.shockAlertG != null,
+                            modifier = Modifier.fillMaxWidth().weight(1f),
+                        )
                     }
                     bayMapTile(mapInputs, viewModel, state, theme, Modifier.weight(1f).fillMaxHeight())
                     Column(
                         modifier = Modifier.fillMaxHeight().width(280.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        tile(theme = theme, modifier = Modifier.fillMaxWidth().height(120.dp)) {
-                            Text("THROTTLE TRACE", color = theme.primary, fontFamily = FontFamily.Monospace, fontSize = 11.sp)
-                            Box(modifier = Modifier.fillMaxSize().padding(top = 4.dp)) { throttleTrace(theme = theme) }
-                        }
-                        cellsTile(theme, Modifier.fillMaxWidth().height(80.dp))
+                        traceTile(theme, state.speedTrail.window(System.currentTimeMillis()), Modifier.fillMaxWidth().height(120.dp))
+                        // 108dp (was 80dp): the label-on-background redesign
+                        // needs two lines for CELL B's pending marker plus a
+                        // bar under each row — 80dp clipped it.
+                        cellsTile(theme, state.deviceBatteryPct, Modifier.fillMaxWidth().height(108.dp))
                         // weight(fill = false) + heightIn floor: takes the
                         // rest of this column's height (there's nothing else
                         // below it) but can never be squeezed under a
@@ -290,29 +312,110 @@ private fun headingTile(
     }
 }
 
+/**
+ * Replaces the old prop speed gauge (COCKPIT-TELEMETRY-REDESIGN Phase C) with
+ * two live-sensor mini-readouts: ambient lux (`$ZENV`) and the persistent last
+ * shock peak (`$ZSHK`). Absence renders "—" and no bar fill, never a fake 0 —
+ * [formatLuxValue]/[formatShockValue]/[luxBarFraction]/[shockBarFraction] (all
+ * pure, in `core/telemetry/EnvGaugeModel.kt`) own that decision; this
+ * composable only draws what they return.
+ */
 @Composable
-private fun speedTile(
+private fun ambientShockTile(
     theme: ConceptTheme,
-    speedKph: Int,
+    lux: Double?,
+    lastShockG: Double?,
+    shockAlertActive: Boolean,
     modifier: Modifier = Modifier,
 ) {
     tile(theme = theme, modifier = modifier) {
-        Text("SPEED KPH", color = theme.primary, fontFamily = FontFamily.Monospace, fontSize = 11.sp)
-        Box(modifier = Modifier.fillMaxSize().padding(top = 4.dp)) {
-            speedGauge(theme = theme, speedKph = speedKph)
+        Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.SpaceBetween) {
+            envReadout(
+                theme = theme,
+                label = "LUX",
+                value = formatLuxValue(lux),
+                barFraction = luxBarFraction(lux),
+                valueColor = theme.accent,
+            )
+            envReadout(
+                theme = theme,
+                label = "SHOCK",
+                // A fresh jolt (the 2 s shockAlertG window) flashes red; a
+                // settled/absent reading stays the ordinary live-data purple.
+                value = formatShockValue(lastShockG),
+                barFraction = shockBarFraction(lastShockG),
+                valueColor = if (shockAlertActive) theme.error else theme.accent,
+            )
         }
     }
 }
 
+/** One `LABEL  VALUE` row + a thin bar underneath; no bar fill when [barFraction] is null. */
+@Composable
+private fun envReadout(
+    theme: ConceptTheme,
+    label: String,
+    value: String,
+    barFraction: Float?,
+    valueColor: Color,
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(label, color = theme.primary, fontFamily = FontFamily.Monospace, fontSize = 10.sp)
+            Text(
+                value,
+                color = valueColor,
+                fontFamily = FontFamily.Monospace,
+                fontWeight = FontWeight.Bold,
+                fontSize = 17.sp,
+                maxLines = 1,
+                softWrap = false,
+            )
+        }
+        Box(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(top = 4.dp)
+                    .height(ENV_BAR_HEIGHT)
+                    .border(1.dp, theme.primary),
+        ) {
+            if (barFraction != null) {
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    drawLine(
+                        color = theme.accent,
+                        start = Offset(0f, size.height / 2f),
+                        end = Offset(size.width * barFraction, size.height / 2f),
+                        strokeWidth = size.height,
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * CELL A = this device's real battery ([org.pureagave.zodiac.control.core.model.batteryPercent]
+ * via [org.pureagave.zodiac.control.data.power.DeviceBatterySource]); CELL B =
+ * a static 50% Victron placeholder, visibly dimmed so it can't be mistaken for
+ * a live reading next to the real A (COCKPIT-TELEMETRY-REDESIGN Phase D — the
+ * earlier pseudo-random `CellGauge` prop model is gone).
+ */
 @Composable
 private fun cellsTile(
     theme: ConceptTheme,
+    deviceBatteryPct: Int?,
     modifier: Modifier = Modifier,
 ) {
     tile(theme = theme, modifier = modifier) {
-        cellBar(theme = theme, label = "CELL A", percent = 70)
-        Spacer(Modifier.height(4.dp))
-        cellBar(theme = theme, label = "CELL B", percent = 45)
+        cellBar(theme = theme, label = "CELL A", pct = deviceBatteryPct, live = true)
+        Spacer(Modifier.height(6.dp))
+        // The Victron drop-in shape: when the GX feed lands, this call site
+        // becomes (…, victronSocPct, live = true) and the pending treatment
+        // disappears — no tile redesign. Explicit two-line label (rather than
+        // letting "CELL B · VEHICLE PENDING" auto-wrap) so the break point is
+        // always clean and "VEHICLE PENDING" is never truncated.
+        cellBar(theme = theme, label = "CELL B\nVEHICLE PENDING", pct = VICTRON_PLACEHOLDER_PCT, live = false)
     }
 }
 
@@ -350,84 +453,142 @@ private fun headingDial(
     }
 }
 
+/** The bordered "THROTTLE TRACE" tile — label + [throttleTrace], shared by both orientations. */
 @Composable
-private fun speedGauge(
+private fun traceTile(
     theme: ConceptTheme,
-    speedKph: Int,
+    window: List<Float?>,
+    modifier: Modifier = Modifier,
 ) {
-    Canvas(modifier = Modifier.fillMaxSize()) {
-        val cx = size.width / 2f
-        val cy = size.height * 0.85f
-        val r = size.width.coerceAtMost(size.height) * 0.48f
-        // Half arc (180° → 0°)
-        val ticks = 6
-        for (i in 0..ticks) {
-            val a = Math.toRadians(180.0 - i * (180.0 / ticks))
-            val outer = Offset((cx + r * cos(a)).toFloat(), (cy + r * sin(a)).toFloat())
-            val inner = Offset((cx + (r - 8f) * cos(a)).toFloat(), (cy + (r - 8f) * sin(a)).toFloat())
-            drawLine(theme.primary, outer, inner, strokeWidth = 1.4f)
+    tile(theme = theme, modifier = modifier) {
+        Text("THROTTLE TRACE", color = theme.primary, fontFamily = FontFamily.Monospace, fontSize = 11.sp)
+        Box(modifier = Modifier.fillMaxSize().padding(top = 4.dp)) {
+            throttleTrace(theme = theme, window = window)
         }
-        val frac = (speedKph / 160f).coerceIn(0f, 1f)
-        val needleA = Math.toRadians(180.0 - frac.toDouble() * 180.0)
-        drawLine(
-            color = theme.accent,
-            start = Offset(cx, cy),
-            end =
-                Offset(
-                    (cx + r * 0.92f * cos(needleA)).toFloat(),
-                    (cy + r * 0.92f * sin(needleA)).toFloat(),
-                ),
-            strokeWidth = 3f,
-        )
-        drawCircle(theme.accent, 5f, Offset(cx, cy))
     }
 }
 
+/**
+ * The real 30-minute speed graph (COCKPIT-TELEMETRY-REDESIGN Phase B) —
+ * replaces the old hard-coded 21-point literal array. [window] is
+ * [org.pureagave.zodiac.control.core.telemetry.SpeedTrail.window]'s fixed
+ * [org.pureagave.zodiac.control.core.telemetry.SpeedTrail.WINDOW_BUCKETS]-slot
+ * list; this composable only maps it to pixels — the bucketing, clamping and
+ * eviction already happened in core. A `null` slot **breaks** the polyline
+ * (no interpolation/coasting, DECIDED) rather than drawing a fabricated
+ * straight line across a gap in the data.
+ */
 @Composable
-private fun throttleTrace(theme: ConceptTheme) {
+private fun throttleTrace(
+    theme: ConceptTheme,
+    window: List<Float?>,
+) {
     Canvas(modifier = Modifier.fillMaxSize()) {
-        val pts =
-            floatArrayOf(
-                0.8f, 0.7f, 0.76f, 0.4f, 0.5f, 0.18f, 0.32f, 0.24f, 0.6f,
-                0.44f, 0.3f, 0.12f, 0.28f, 0.36f, 0.18f, 0.42f, 0.3f, 0.54f, 0.4f, 0.62f, 0.3f,
-            )
         val w = size.width
         val h = size.height
-        val dx = w / (pts.size - 1)
-        for (i in 0 until pts.size - 1) {
+        val axisMax = CockpitUiState.MAX_SPEED_KPH.toFloat()
+        // Dim chrome gridlines at 40/80/120 kph out of the fixed 0..160 axis.
+        for (kph in TRACE_GRIDLINES_KPH) {
+            val y = h * (1f - kph / axisMax)
+            drawLine(theme.dim, Offset(0f, y), Offset(w, y), strokeWidth = 1f)
+        }
+        if (window.size < 2) return@Canvas
+        val dx = w / (window.size - 1)
+        for (i in 0 until window.size - 1) {
+            val a = window[i]
+            val b = window[i + 1]
+            if (a == null || b == null) continue
             drawLine(
                 color = theme.accent,
-                start = Offset(i * dx, pts[i] * h),
-                end = Offset((i + 1) * dx, pts[i + 1] * h),
+                start = Offset(i * dx, h * (1f - a / axisMax)),
+                end = Offset((i + 1) * dx, h * (1f - b / axisMax)),
                 strokeWidth = 2f,
             )
         }
     }
 }
 
+private val TRACE_GRIDLINES_KPH = listOf(40f, 80f, 120f)
+
+/**
+ * Label + value drawn on the tile's plain black background, with a separate
+ * **thin** bar underneath carrying the fill — never text overlaid on the bar.
+ * On-device (A54, 2026-08-26) the previous text-on-fill design was illegible
+ * at both extremes: white/green text vanished into a ~100%-full green bar,
+ * and CELL B's longer label overlapped/truncated against its own fill
+ * ("L B"). Text-on-background is legible at any fill level; the bar is the
+ * only thing that moves.
+ *
+ * `pct` drives the fill fraction; `live` picks the charter colour (green for
+ * a real reading, red at/under [DEVICE_BATTERY_LOW_PCT], dimmed for the
+ * Victron placeholder) and whether a percent is drawn at all — a static
+ * placeholder shows no number (a number invites belief). [label] may contain
+ * `\n` for a deliberate two-line break (CELL B's pending marker needs the
+ * room; CELL A's short label never wraps).
+ */
 @Composable
 private fun cellBar(
     theme: ConceptTheme,
     label: String,
-    percent: Int,
+    pct: Int?,
+    live: Boolean,
 ) {
-    Box(modifier = Modifier.fillMaxWidth().height(28.dp).border(1.dp, theme.primary)) {
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            val frac = (percent / 100f).coerceIn(0f, 1f)
-            drawLine(
-                color = theme.accent,
-                start = Offset(0f, size.height / 2f),
-                end = Offset(size.width * frac, size.height / 2f),
-                strokeWidth = size.height,
-            )
+    val low = live && pct != null && pct <= DEVICE_BATTERY_LOW_PCT
+    val color =
+        when {
+            !live -> theme.dim
+            low -> theme.error
+            else -> theme.primary
         }
-        Text(
-            text = "$label  $percent%",
-            color = theme.background,
-            fontFamily = FontFamily.Monospace,
-            fontWeight = FontWeight.Bold,
-            fontSize = 13.sp,
-            modifier = Modifier.align(Alignment.CenterStart).padding(start = 8.dp),
-        )
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(modifier = Modifier.fillMaxWidth()) {
+            Text(
+                text = label,
+                color = color,
+                fontFamily = FontFamily.Monospace,
+                fontWeight = FontWeight.Bold,
+                fontSize = 11.sp,
+                maxLines = if (live) 1 else 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+            if (live) {
+                Text(
+                    text = pct?.let { "$it%" } ?: "—",
+                    color = color,
+                    fontFamily = FontFamily.Monospace,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 11.sp,
+                    maxLines = 1,
+                    softWrap = false,
+                )
+            }
+        }
+        Box(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(top = 3.dp)
+                    .height(CELL_BAR_HEIGHT)
+                    .border(1.dp, theme.primary),
+        ) {
+            if (pct != null) {
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    val frac = (pct / 100f).coerceIn(0f, 1f)
+                    drawLine(
+                        color = color,
+                        start = Offset(0f, size.height / 2f),
+                        end = Offset(size.width * frac, size.height / 2f),
+                        strokeWidth = size.height,
+                    )
+                }
+            }
+        }
     }
 }
+
+/** Static Victron SoC stand-in until the GX Modbus-TCP/MQTT feed lands — see [cellsTile]'s KDoc. */
+private const val VICTRON_PLACEHOLDER_PCT = 50
+
+private val ENV_BAR_HEIGHT = 6.dp
+private val CELL_BAR_HEIGHT = 5.dp

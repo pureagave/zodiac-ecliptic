@@ -136,6 +136,7 @@ private fun rememberCockpitViewModel(app: ZodiacApplication): CockpitViewModel =
                 navShareFlow = app.navShareReceiver.messages,
                 navPublisher = app.navShareSender,
                 navSrcId = app.navSrcId,
+                deviceBatteryPct = app.deviceBatterySource.percent,
             ),
     )
 

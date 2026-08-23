@@ -55,6 +55,7 @@ import org.pureagave.zodiac.control.core.telemetry.AmbientLight
 import org.pureagave.zodiac.control.core.telemetry.BeaconHealth
 import org.pureagave.zodiac.control.core.telemetry.BeaconSensors
 import org.pureagave.zodiac.control.core.telemetry.Odometer
+import org.pureagave.zodiac.control.core.telemetry.SpeedTrail
 import org.pureagave.zodiac.control.core.vision.DriverThreat
 import org.pureagave.zodiac.control.core.vision.VisionFeed
 import org.pureagave.zodiac.control.data.FakeVehicleGateway
@@ -1867,6 +1868,104 @@ class CockpitViewModelTest {
                     published!!.seq,
                 )
                 assertEquals(listOf(42), prefs.navShareSeqs)
+            } finally {
+                store.clear()
+            }
+        }
+
+    // --- COCKPIT-TLM Phase B: the speed-trail sampling tick. This loop runs
+    // on speedTrailDispatcher rather than the Main-dispatched scheduler every
+    // other collector implicitly shares (see the ctor param's kdoc) -- an
+    // unconditional, infinitely-recurring delay() sharing runTest's scheduler
+    // makes advanceUntilIdle() spin forever, since the scheduler always has
+    // "one more" self-rescheduled tick queued. This test explicitly ties the
+    // loop to the shared virtual clock (to drive it with advanceTimeBy) and,
+    // like the FakeLocationSource tests above, therefore never calls
+    // advanceUntilIdle() -- only runCurrent()/advanceTimeBy(). ---
+
+    @Test
+    fun speedTrail_samplesEffectiveSpeedKphEvery10s_measuredNotTheDebugChip() =
+        runTest {
+            val stub = StubLocationSource(LocationSourceType.FAKE)
+            val routed =
+                RoutedLocationSource(
+                    registry = LocationSourceRegistry(sources = listOf(stub)),
+                    scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler)),
+                    initialType = LocationSourceType.FAKE,
+                )
+            val store = ViewModelStore()
+            try {
+                val factory =
+                    CockpitViewModelFactory(
+                        telemetryRepository = StaticTelemetryRepo(),
+                        vehicleGateway = FakeVehicleGateway(),
+                        playaMapRepository = NoOpPlayaMapRepository,
+                        locationSource = routed,
+                        preferences = NoOpCockpitPreferences(),
+                        fakeLocationSource = FakeLocationSource(scope = this.backgroundScope),
+                        nowMs = { testScheduler.currentTime },
+                        speedTrailDispatcher = UnconfinedTestDispatcher(testScheduler),
+                    )
+                val vm = ViewModelProvider(store, factory)[CockpitViewModel::class.java]
+                runCurrent()
+                assertTrue("a fresh trail must start empty", vm.uiState.value.speedTrail.samples.isEmpty())
+
+                // A live measured fix at 22 kph, then a debug-chip value that
+                // deliberately differs -- effectiveSpeedKph must stay the
+                // measured 22, and that measured value is what gets sampled.
+                stub.emit(LocationSourceState.Active(GpsFix(location = LatLon(40.786, -119.203), speedKph = 22.0)))
+                runCurrent()
+                vm.setSpeed(5)
+                runCurrent()
+                assertEquals(22.0, vm.uiState.value.effectiveSpeedKph, 1e-6)
+
+                advanceTimeBy(3 * SpeedTrail.BUCKET_MS)
+                runCurrent()
+
+                val samples = vm.uiState.value.speedTrail.samples
+                assertEquals(3, samples.size)
+                assertTrue(
+                    "the sampled value must be the measured speed (22), never the debug chip (5)",
+                    samples.all { it.kph == 22f },
+                )
+            } finally {
+                store.clear()
+            }
+        }
+
+    // --- COCKPIT-TLM Phase D: this device's own battery, folded from
+    // DeviceBatterySource's plain flow. Ordinary Main-dispatched collector
+    // (unlike the speed trail above), so advanceUntilIdle() is safe here. ---
+
+    @Test
+    fun deviceBatteryPct_foldsFromTheSourceFlow_andIsNotLatchedOnNull() =
+        runTest {
+            val battery = MutableStateFlow<Int?>(null)
+            val store = ViewModelStore()
+            try {
+                val factory =
+                    CockpitViewModelFactory(
+                        telemetryRepository = StaticTelemetryRepo(),
+                        vehicleGateway = FakeVehicleGateway(),
+                        playaMapRepository = NoOpPlayaMapRepository,
+                        locationSource = newFakeRoutedLocationSource(this.backgroundScope),
+                        preferences = NoOpCockpitPreferences(),
+                        fakeLocationSource = FakeLocationSource(scope = this.backgroundScope),
+                        deviceBatteryPct = battery,
+                    )
+                val vm = ViewModelProvider(store, factory)[CockpitViewModel::class.java]
+                advanceUntilIdle()
+                assertNull("no reading yet -> unknown, not a fake number", vm.uiState.value.deviceBatteryPct)
+
+                battery.value = 78
+                advanceUntilIdle()
+                assertEquals(78, vm.uiState.value.deviceBatteryPct)
+
+                // An unplug/replug glitch that emits null again must clear the
+                // readout, not freeze the last-seen percent.
+                battery.value = null
+                advanceUntilIdle()
+                assertNull(vm.uiState.value.deviceBatteryPct)
             } finally {
                 store.clear()
             }

@@ -3,6 +3,8 @@ package org.pureagave.zodiac.control.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,6 +31,7 @@ import org.pureagave.zodiac.control.core.ops.PlayaPoi
 import org.pureagave.zodiac.control.core.sensor.LocationSourceState
 import org.pureagave.zodiac.control.core.sensor.LocationSourceType
 import org.pureagave.zodiac.control.core.telemetry.BeaconSensors
+import org.pureagave.zodiac.control.core.telemetry.SpeedTrail
 import org.pureagave.zodiac.control.core.vision.DriverThreat
 import org.pureagave.zodiac.control.core.vision.VisionFeed
 import org.pureagave.zodiac.control.core.vision.driverAlerts
@@ -130,6 +133,37 @@ class CockpitViewModel(
     navPublisher: NavSharePublisher = NoOpNavSharePublisher,
     /** This device's stable short id ([org.pureagave.zodiac.control.core.ops.NavShareProtocol.sanitizeSrc] applied to `Settings.Secure.ANDROID_ID`) — the arbiter's tie-break key. */
     navSrcId: String = "0",
+    /**
+     * Clock seam for the [SpeedTrail] sampling tick (COCKPIT-TELEMETRY-REDESIGN
+     * Phase B) — defaulted so production threads nothing extra through, and a
+     * test can inject the `TestScope`'s virtual clock instead of waiting on
+     * real wall time.
+     */
+    private val nowMs: () -> Long = System::currentTimeMillis,
+    /**
+     * Dispatcher the [SpeedTrail] sampling tick runs its `while (true) { delay(...) }`
+     * loop on. Defaults to [Dispatchers.Default] — a **real** dispatcher,
+     * deliberately *not* `Dispatchers.Main` (the one every other collector in
+     * this class implicitly shares via `viewModelScope`). Measured, not
+     * guessed: an infinitely-recurring `delay()` on the same
+     * `TestCoroutineScheduler` `CockpitViewModelTest`'s `advanceUntilIdle()`
+     * drives makes that call spin forever — the scheduler always has "one
+     * more" self-rescheduled tick queued, so it can never observe the
+     * "nothing left to run" state `advanceUntilIdle()` waits for. Every one
+     * of that file's ~90 pre-existing scenarios calls `advanceUntilIdle()`
+     * for reasons unrelated to the speed trail, so this loop must not be
+     * visible to it by default. A speed-trail-specific test injects
+     * `UnconfinedTestDispatcher(testScheduler)` here to regain virtual-time
+     * control over just this loop, via `advanceTimeBy`.
+     */
+    private val speedTrailDispatcher: CoroutineDispatcher = Dispatchers.Default,
+    /**
+     * This device's own battery percent (COCKPIT-TELEMETRY-REDESIGN Phase D),
+     * from [org.pureagave.zodiac.control.data.power.DeviceBatterySource].
+     * Defaulted to a constant `null` flow for tests/pre-wiring, matching the
+     * other plain-flow dependencies on this class.
+     */
+    private val deviceBatteryPct: StateFlow<Int?> = MutableStateFlow(null),
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(CockpitUiState())
     val uiState: StateFlow<CockpitUiState> = _uiState.asStateFlow()
@@ -322,6 +356,28 @@ class CockpitViewModel(
                 // the one collector that finally reads it into UI state.
                 locationSource.usingFallback.collect { fb ->
                     _uiState.update { it.copy(gpsUsingFallback = fb) }
+                }
+            }
+            launch(speedTrailDispatcher) {
+                // COCKPIT-TLM Phase B: samples effectiveSpeedKph into the
+                // 30-minute speed trail every BUCKET_MS (10 s) — "graph the
+                // speed the cockpit already claims", not a second
+                // speed-aggregation policy. Runs for the life of the VM; no
+                // cancellation condition, same as the other tick loops here.
+                // See speedTrailDispatcher's kdoc for why this is not the
+                // Main-dispatched delay every other collector implicitly is.
+                while (true) {
+                    delay(SpeedTrail.BUCKET_MS)
+                    _uiState.update { it.copy(speedTrail = it.speedTrail.record(nowMs(), it.effectiveSpeedKph)) }
+                }
+            }
+            launch {
+                // COCKPIT-TLM Phase D: this device's own battery, from
+                // DeviceBatterySource. Not latched — an unplug/replug glitch
+                // that emits null must clear the readout, not freeze a stale
+                // percent.
+                deviceBatteryPct.collect { pct ->
+                    _uiState.update { it.copy(deviceBatteryPct = pct) }
                 }
             }
             launch {
@@ -539,6 +595,9 @@ class CockpitViewModelFactory(
     private val navShareFlow: StateFlow<NavShareMessage?> = MutableStateFlow(null),
     private val navPublisher: NavSharePublisher = NoOpNavSharePublisher,
     private val navSrcId: String = "0",
+    private val nowMs: () -> Long = System::currentTimeMillis,
+    private val deviceBatteryPct: StateFlow<Int?> = MutableStateFlow(null),
+    private val speedTrailDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
@@ -559,6 +618,9 @@ class CockpitViewModelFactory(
                 navShareFlow = navShareFlow,
                 navPublisher = navPublisher,
                 navSrcId = navSrcId,
+                nowMs = nowMs,
+                deviceBatteryPct = deviceBatteryPct,
+                speedTrailDispatcher = speedTrailDispatcher,
             ) as T
         }
         error("Unknown ViewModel class: ${modelClass.name}")

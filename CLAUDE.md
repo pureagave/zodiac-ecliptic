@@ -309,7 +309,11 @@ dimmer night set for dark adaptation.
   `NetworkLocationSource` and `NetworkThreatSource` — never through the gateway.
 - The GPS location sources, by contrast, have real System/BLE/USB/Network
   implementations.
-- MAP's cell gauges and throttle trace are hard-coded literals.
+- MAP's throttle trace is real (a 30-min `effectiveSpeedKph` history, COCKPIT-TELEMETRY-REDESIGN
+  Phase B). Its CELL A is real too — this device's own battery via `DeviceBatterySource`
+  (Phase D); CELL B stays a static, visibly-labelled Victron placeholder (50%,
+  dimmed, `VEHICLE PENDING`) until the GX Modbus-TCP/MQTT feed lands — no random
+  values anywhere on the tile wall.
 - The Jetson has no trained detector. Thermal + RGB cameras now stream on the box, but the permanent multi-camera ring, on-vehicle mount/aim, and the model are not built.
 - The tracker light's aim constants are uncalibrated placeholders.
 
