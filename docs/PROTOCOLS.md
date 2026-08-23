@@ -562,6 +562,19 @@ The DRIVER HUD's heading arch (`DriverNightScreen.kt`) already reads
 `CockpitUiState.activeDriveTarget` — this feature only gets the S9+'s chosen
 target onto that field on every tablet; no new HUD UI was added.
 
+**NAV-FLASH (2026-08-22):** adopting a `$ZNAV` message raises a transient
+~5 s "target just changed" banner (`NavTargetFlash` /
+`ui/ops/NavTargetFlashBanner.kt`) on every non-originating display, passenger
+carousel included — purely a UI layer on top of the existing adoption path,
+**no wire change**. `NavShareController.onReceived` is the only caller, gated
+on `applyLocally`'s return so an unresolvable `ADDR` (bad ring) never flashes
+a banner for a target that didn't actually take; `userSet` never calls it, so
+the device that made the change never flashes it back at itself. The owner's
+periodic 3 s re-broadcasts of an unchanged target never re-trigger it: they
+parse to a value-equal `NavShareMessage`, which the upstream `StateFlow`
+conflates away before the collector sees a second emission, and
+`NavShareArbiter` would refuse the non-strictly-greater key even if it did.
+
 ### 5.2 Framing and grammar
 
 Same framing as §2.1 (`$<BODY>*<CC>\r\n`, US-ASCII, `Locale.US`, two-hex XOR

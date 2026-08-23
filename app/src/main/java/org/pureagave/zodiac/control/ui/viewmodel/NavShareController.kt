@@ -62,11 +62,17 @@ internal class NavShareController(
      * remote target renders identically to a local one. If this device was
      * the owner before adopting, it yields: [NavSharePublisher.stop] cancels
      * its periodic re-broadcast (spec R5).
+     *
+     * The "target just changed" flash ([NavigationController.flashAdoptedTarget])
+     * lives here and ONLY here — [userSet] never calls it, so the originating
+     * device never flashes its own change. Gated on [applyLocally]'s return so
+     * an unresolvable [NavSharePayload.Address] (bad ring) can't flash a
+     * banner claiming a target that didn't actually take.
      */
     fun onReceived(msg: NavShareMessage) {
         val wasOwning = arbiter.owning
         if (!arbiter.onReceived(msg.seq, msg.src)) return
-        applyLocally(msg.payload)
+        if (applyLocally(msg.payload)) navigation.flashAdoptedTarget(msg.payload)
         if (wasOwning) publisher.stop()
         scope.launch { persistSeq(arbiter.maxSeen) }
     }

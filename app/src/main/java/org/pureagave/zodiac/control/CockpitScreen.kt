@@ -34,6 +34,7 @@ import org.pureagave.zodiac.control.ui.concepts.motionTrackerScreen
 import org.pureagave.zodiac.control.ui.concepts.provideCockpitTheme
 import org.pureagave.zodiac.control.ui.debug.logViewerPanel
 import org.pureagave.zodiac.control.ui.ops.addressEntryPanel
+import org.pureagave.zodiac.control.ui.ops.navTargetFlashBanner
 import org.pureagave.zodiac.control.ui.ops.passingCallout
 import org.pureagave.zodiac.control.ui.ops.streetCrossingPopup
 import org.pureagave.zodiac.control.ui.passenger.SunClock
@@ -119,6 +120,14 @@ fun cockpitScreen(
                     state.streetPopup?.let { streetCrossingPopup(theme = ThemeTracker, name = it) }
                     state.passingCallout?.let { passingCallout(theme = ThemeTracker, name = it) }
                 }
+                // Deliberately OUTSIDE the !passengerMode guard above (unlike the
+                // street/art popups): a $ZNAV adoption is fleet-wide news, so every
+                // display -- including the passenger carousel -- announces it. The
+                // originating device never flashes its own change (see
+                // NavShareController.onReceived), so this can't spam the S9+/A54
+                // that just set it. Drawn after the street popup so it z-orders on
+                // top if both happen to be up at once.
+                state.navTargetFlash?.let { navTargetFlashBanner(theme = ThemeTracker, flash = it) }
                 if (state.addressEntryOpen && !passengerMode && state.navAuthority) {
                     addressEntryPanel(
                         theme = ThemeTracker,

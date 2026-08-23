@@ -15,6 +15,7 @@ import org.pureagave.zodiac.control.core.model.PlayaMap
 import org.pureagave.zodiac.control.core.navigation.NavigationCue
 import org.pureagave.zodiac.control.core.ops.DriveTarget
 import org.pureagave.zodiac.control.core.ops.NavTarget
+import org.pureagave.zodiac.control.core.ops.NavTargetFlash
 import org.pureagave.zodiac.control.core.ops.PlayaPoi
 import org.pureagave.zodiac.control.core.ops.nearestDriveTarget
 import org.pureagave.zodiac.control.core.ops.toDriveTarget
@@ -83,6 +84,14 @@ data class CockpitUiState(
     val streetPopup: String? = null,
     /** Notable art the ego is currently passing (within range), flashed as a bottom callout; null when none. */
     val passingCallout: String? = null,
+    /**
+     * Transient "target just changed" banner (`ui/ops/NavTargetFlashBanner.kt`),
+     * shown for a few seconds after a `$ZNAV` **adoption** — never set by a
+     * local user action (see `NavShareController.onReceived`, which is the
+     * only caller of `NavigationController.flashAdoptedTarget`), so the
+     * originating device never flashes its own change. Cleared on a timer.
+     */
+    val navTargetFlash: NavTargetFlash? = null,
     /** Active "drive to" preset — HOME/MAN/TEMPLE (default HOME/camp). */
     val navTarget: NavTarget = NavTarget.HOME,
     /**

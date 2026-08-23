@@ -18,11 +18,13 @@ import org.pureagave.zodiac.control.core.navigation.routeTo
 import org.pureagave.zodiac.control.core.navigation.streetLabel
 import org.pureagave.zodiac.control.core.navigation.toCityModel
 import org.pureagave.zodiac.control.core.ops.AnnouncementCooldown
+import org.pureagave.zodiac.control.core.ops.NavSharePayload
 import org.pureagave.zodiac.control.core.ops.NavTarget
 import org.pureagave.zodiac.control.core.ops.PlayaPoi
 import org.pureagave.zodiac.control.core.ops.PoiKind
 import org.pureagave.zodiac.control.core.ops.addressTarget
 import org.pureagave.zodiac.control.core.ops.contactsWithinRange
+import org.pureagave.zodiac.control.core.ops.navTargetFlashOf
 import org.pureagave.zodiac.control.ui.state.CockpitUiState
 
 /**
@@ -66,6 +68,9 @@ internal class NavigationController(
     /** Last art whose passing was announced, and the timer that clears its callout. */
     private var lastPassingUid: String? = null
     private var passingJob: Job? = null
+
+    /** Timer that clears [CockpitUiState.navTargetFlash]; see [flashAdoptedTarget]. */
+    private var navFlashJob: Job? = null
 
     /**
      * The BRC GIS finished loading: derive the city model everything here
@@ -115,6 +120,32 @@ internal class NavigationController(
         state.update { it.copy(customTarget = target, driveToBath = false) }
         recomputeRoute()
         return true
+    }
+
+    /**
+     * Flash the "target just changed" banner after a `$ZNAV` **adoption**.
+     * Called from [NavShareController.onReceived] only — never from a local
+     * user action, which is what keeps the originating device from flashing
+     * its own change (see [CockpitUiState.navTargetFlash]'s KDoc).
+     *
+     * No cooldown, unlike [flashStreetOnCrossing] / [announcePassingArt]: a
+     * re-flash can only happen from a strictly-newer `(seq, src)` key, which
+     * is by construction a genuine new choice, not a flapping input. The
+     * owner's periodic 3 s re-broadcasts of the *same* target never reach
+     * here twice — they're value-equal `NavShareMessage`s, so the upstream
+     * `StateFlow` conflates them before the collector even sees a second
+     * emission, and `NavShareArbiter` separately refuses to adopt a
+     * non-strictly-greater key even if it did. Two independent reasons the
+     * same re-broadcast can't re-trigger this.
+     */
+    fun flashAdoptedTarget(payload: NavSharePayload) {
+        state.update { it.copy(navTargetFlash = navTargetFlashOf(payload)) }
+        navFlashJob?.cancel()
+        navFlashJob =
+            scope.launch {
+                delay(NAV_FLASH_MS)
+                state.update { it.copy(navTargetFlash = null) }
+            }
     }
 
     /**
@@ -225,3 +256,6 @@ private const val STREET_POPUP_MS: Long = 2_500L
 /** Proximity (metres) at which we announce passing a notable art piece, and how long the callout stays. */
 private const val PASS_RADIUS_M: Double = 120.0
 private const val PASSING_CALLOUT_MS: Long = 3_000L
+
+/** How long the "target just changed" banner stays up after a `$ZNAV` adoption; see [NavigationController.flashAdoptedTarget]. */
+private const val NAV_FLASH_MS: Long = 5_000L

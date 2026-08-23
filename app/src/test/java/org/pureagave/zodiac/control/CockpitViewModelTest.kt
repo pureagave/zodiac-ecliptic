@@ -47,6 +47,7 @@ import org.pureagave.zodiac.control.core.ops.NavShareMessage
 import org.pureagave.zodiac.control.core.ops.NavSharePayload
 import org.pureagave.zodiac.control.core.ops.NavShareProtocol
 import org.pureagave.zodiac.control.core.ops.NavTarget
+import org.pureagave.zodiac.control.core.ops.NavTargetFlash
 import org.pureagave.zodiac.control.core.sensor.GpsFix
 import org.pureagave.zodiac.control.core.sensor.LocationFailoverPolicy
 import org.pureagave.zodiac.control.core.sensor.LocationSourceState
@@ -1695,6 +1696,206 @@ class CockpitViewModelTest {
             }
         }
 
+    // --- NAV-FLASH: a $ZNAV adoption flashes a transient "target just
+    // changed" banner (NavigationController.flashAdoptedTarget) for
+    // NAV_FLASH_MS; a local set never flashes (no self-flash); own-echo,
+    // stale/superseded, and unresolvable messages -- none of which actually
+    // adopt -- must not flash either. Asserted against literal
+    // NavTargetFlash(...) values, never navTargetFlashOf, so a mapping bug
+    // in the banner text can't self-agree with the assertion. ---
+
+    @Test
+    fun navShare_receivedAddress_flashesTheRoutingBanner_andAdoptsTheTarget() =
+        runTest {
+            val navShareFlow = MutableStateFlow<NavShareMessage?>(null)
+            val store = ViewModelStore()
+            try {
+                val vm = navShareVm(this.backgroundScope, store, navAuthority = true, navShareFlow = navShareFlow)
+                advanceUntilIdle()
+
+                // runCurrent(), not advanceUntilIdle(): the latter would fast-forward
+                // the virtual clock straight through the 5 s clear timer since nothing
+                // else is pending, and the flash would already be gone by the time we
+                // got to assert it.
+                navShareFlow.value = NavShareMessage(seq = 1, src = "OTHER", payload = NavSharePayload.Address(ClockTime(2, 15), "H"))
+                runCurrent()
+
+                assertEquals(NavTargetFlash("ROUTING TO", "7:30 & E"), vm.uiState.value.navTargetFlash)
+                // Proves this is a real adoption, not just a banner glued on top.
+                assertEquals("7:30 & E", vm.uiState.value.customTarget?.label)
+            } finally {
+                store.clear()
+            }
+        }
+
+    @Test
+    fun navShare_localUserSet_neverFlashes() =
+        runTest {
+            val publisher = FakeNavSharePublisher()
+            val store = ViewModelStore()
+            try {
+                val vm = navShareVm(this.backgroundScope, store, navAuthority = true, publisher = publisher)
+                advanceUntilIdle()
+
+                vm.setNavTarget(NavTarget.MAN)
+                // runCurrent(), NOT advanceUntilIdle(): the local set applies and
+                // publishes synchronously, so runCurrent() satisfies the preconditions
+                // below -- but it must NOT advance the clock, or a wrongly-set flash's
+                // 5 s clear timer would run to completion and the assertNull would pass
+                // vacuously (the mutation this test guards -- flash moved into
+                // applyLocally/userSet -- would go undetected). See V5/V6.
+                runCurrent()
+
+                // Precondition: the set genuinely applied and published --
+                // otherwise a null flash would be trivially true for the wrong reason.
+                assertEquals(NavTarget.MAN, vm.uiState.value.navTarget)
+                assertEquals(1, publisher.published.size)
+                assertNull("a local set must never flash its own change", vm.uiState.value.navTargetFlash)
+            } finally {
+                store.clear()
+            }
+        }
+
+    @Test
+    fun navShare_ownSrcEcho_doesNotFlash() =
+        runTest {
+            val navShareFlow = MutableStateFlow<NavShareMessage?>(null)
+            val store = ViewModelStore()
+            try {
+                val vm =
+                    navShareVm(
+                        this.backgroundScope,
+                        store,
+                        navAuthority = true,
+                        navShareFlow = navShareFlow,
+                        navSrcId = "ME",
+                    )
+                advanceUntilIdle()
+
+                navShareFlow.value = NavShareMessage(seq = 999, src = "ME", payload = NavSharePayload.Preset(NavTarget.TEMPLE))
+                // runCurrent(), NOT advanceUntilIdle(): advancing the clock would run a
+                // wrongly-set flash's clear timer and hide a flash-before-the-arbiter-check
+                // regression. runCurrent() drives the collector without advancing time.
+                runCurrent()
+
+                assertNull("own-echo is never adopted, so it must not flash either", vm.uiState.value.navTargetFlash)
+                // Backstop: own-echo must not be ADOPTED at all, so the target is
+                // unchanged from its HOME default (catches a flash placed before the
+                // arbiter's own-src rejection, which would also mean wrongful adoption).
+                assertEquals("own-echo must not be adopted", NavTarget.HOME, vm.uiState.value.navTarget)
+            } finally {
+                store.clear()
+            }
+        }
+
+    @Test
+    fun navShare_staleMessageAfterAFlashHasCleared_doesNotReFlash() =
+        runTest {
+            val navShareFlow = MutableStateFlow<NavShareMessage?>(null)
+            val store = ViewModelStore()
+            try {
+                val vm = navShareVm(this.backgroundScope, store, navAuthority = true, navShareFlow = navShareFlow)
+                advanceUntilIdle()
+
+                // A genuine adoption, then let its banner run out completely.
+                navShareFlow.value = NavShareMessage(seq = 5, src = "OTHER", payload = NavSharePayload.Preset(NavTarget.TEMPLE))
+                advanceUntilIdle()
+                advanceTimeBy(NAV_FLASH_MS)
+                runCurrent()
+                assertNull(vm.uiState.value.navTargetFlash)
+
+                // A lower-seq message from a third device: the arbiter must reject
+                // it outright, so it never reaches applyLocally and never flashes.
+                // (Not tested here: a literal value-equal re-broadcast of the same
+                // message -- StateFlow conflation drops that before the collector
+                // ever sees a second emission, so that path can't fail either way.)
+                navShareFlow.value = NavShareMessage(seq = 3, src = "AAAA", payload = NavSharePayload.Bath)
+                // runCurrent(), NOT advanceUntilIdle(): advancing the clock would clear a
+                // wrongly-set flash before the assertNull, defeating the check that an
+                // arbiter-rejected (stale) message never flashes.
+                runCurrent()
+
+                assertNull(vm.uiState.value.navTargetFlash)
+                assertFalse("a stale message must not adopt BATH either", vm.uiState.value.driveToBath)
+            } finally {
+                store.clear()
+            }
+        }
+
+    @Test
+    fun navShare_flashClearsAfterFiveSecondsAndNotBeforeThat() =
+        runTest {
+            val navShareFlow = MutableStateFlow<NavShareMessage?>(null)
+            val store = ViewModelStore()
+            try {
+                val vm = navShareVm(this.backgroundScope, store, navAuthority = true, navShareFlow = navShareFlow)
+                advanceUntilIdle()
+
+                // runCurrent(), not advanceUntilIdle() -- see the comment in
+                // navShare_receivedAddress_flashesTheRoutingBanner_andAdoptsTheTarget.
+                navShareFlow.value = NavShareMessage(seq = 1, src = "OTHER", payload = NavSharePayload.Preset(NavTarget.MAN))
+                runCurrent()
+
+                advanceTimeBy(1_000L)
+                runCurrent()
+                assertNotNull("still well inside the NAV_FLASH_MS window", vm.uiState.value.navTargetFlash)
+
+                advanceTimeBy(NAV_FLASH_MS - 1_000L)
+                runCurrent()
+                assertNull("the full window has elapsed", vm.uiState.value.navTargetFlash)
+            } finally {
+                store.clear()
+            }
+        }
+
+    @Test
+    fun navShare_receivedClear_flashesRouteCleared() =
+        runTest {
+            val navShareFlow = MutableStateFlow<NavShareMessage?>(null)
+            val store = ViewModelStore()
+            try {
+                val vm = navShareVm(this.backgroundScope, store, navAuthority = true, navShareFlow = navShareFlow)
+                advanceUntilIdle()
+                vm.setNavTarget(NavTarget.MAN)
+                advanceUntilIdle()
+
+                // runCurrent(), not advanceUntilIdle() -- see the comment in
+                // navShare_receivedAddress_flashesTheRoutingBanner_andAdoptsTheTarget.
+                navShareFlow.value = NavShareMessage(seq = 2, src = "OTHER", payload = NavSharePayload.Clear)
+                runCurrent()
+
+                assertEquals(NavTargetFlash("ROUTE", "CLEARED"), vm.uiState.value.navTargetFlash)
+                assertEquals(NavTarget.HOME, vm.uiState.value.navTarget)
+            } finally {
+                store.clear()
+            }
+        }
+
+    @Test
+    fun navShare_receivedUnknownRingAddress_doesNotFlash() =
+        runTest {
+            val navShareFlow = MutableStateFlow<NavShareMessage?>(null)
+            val store = ViewModelStore()
+            try {
+                val vm = navShareVm(this.backgroundScope, store, navAuthority = true, navShareFlow = navShareFlow)
+                advanceUntilIdle()
+
+                // The arbiter accepts this key (it's a genuinely newer message), but
+                // applyLocally's driveToAddress fails to resolve the ring -- this
+                // forces the gate onto applyLocally's return, not just "arbiter said yes".
+                navShareFlow.value = NavShareMessage(seq = 1, src = "OTHER", payload = NavSharePayload.Address(ClockTime(4, 0), "Z"))
+                // runCurrent(), NOT advanceUntilIdle(): advancing the clock would run the
+                // clear timer of a wrongly-set flash, so removing the applyLocally gate
+                // (flash whenever the arbiter accepts) would go undetected. This is the
+                // one test that pins the gate onto applyLocally's return value.
+                runCurrent()
+
+                assertNull("an unresolvable target must not flash a banner claiming one applied", vm.uiState.value.navTargetFlash)
+            } finally {
+                store.clear()
+            }
+        }
+
     // --- Follower gating: a device without nav authority must leave every
     // one of the four entry points a genuine no-op -- no state change, no
     // publish -- with a positive (navAuthority = true) control beside each. ---
@@ -1975,6 +2176,9 @@ class CockpitViewModelTest {
 /** How long a shock/impact alert banner stays before it clears (mirrors the VM constant). */
 private const val SHOCK_ALERT_MS: Long = 2_000L
 private const val HALF_SHOCK_ALERT_MS: Long = 500L
+
+/** How long the NAV-FLASH "target just changed" banner stays before it clears (mirrors NavigationController's constant). */
+private const val NAV_FLASH_MS: Long = 5_000L
 
 /** A VM wired with no-op deps plus a caller-supplied [beaconSensors] flow for the sensor-fold tests. */
 private fun beaconVm(
