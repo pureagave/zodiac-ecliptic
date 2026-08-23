@@ -316,6 +316,15 @@ class CockpitViewModel(
                 }
             }
             launch {
+                // The failover leg (COCKPIT-TLM Phase A): whether the routed
+                // source is quietly running on its backup right now. Already
+                // plumbed as far as RoutedLocationSource.usingFallback; this is
+                // the one collector that finally reads it into UI state.
+                locationSource.usingFallback.collect { fb ->
+                    _uiState.update { it.copy(gpsUsingFallback = fb) }
+                }
+            }
+            launch {
                 // This device's nav authority — automatic and device-derived
                 // (see CockpitUiState.navAuthority's kdoc); folded into
                 // CockpitUiState because the ViewModel needs it synchronously
@@ -340,6 +349,10 @@ class CockpitViewModel(
                             ambientLux = sensors.ambientLight?.lux,
                             beaconHealth = sensors.beaconHealth,
                             odometer = sensors.odometer,
+                            // Persistent last shock peak (vs. the transient
+                            // shockAlertG cleared below) — shockCount == 0
+                            // means no event has happened yet this session.
+                            lastShockG = if (sensors.shockCount > 0) sensors.lastShockG else null,
                         )
                     }
                     if (sensors.shockCount > lastShockCount) {

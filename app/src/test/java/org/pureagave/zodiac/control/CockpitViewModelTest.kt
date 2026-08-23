@@ -48,6 +48,7 @@ import org.pureagave.zodiac.control.core.ops.NavSharePayload
 import org.pureagave.zodiac.control.core.ops.NavShareProtocol
 import org.pureagave.zodiac.control.core.ops.NavTarget
 import org.pureagave.zodiac.control.core.sensor.GpsFix
+import org.pureagave.zodiac.control.core.sensor.LocationFailoverPolicy
 import org.pureagave.zodiac.control.core.sensor.LocationSourceState
 import org.pureagave.zodiac.control.core.sensor.LocationSourceType
 import org.pureagave.zodiac.control.core.telemetry.AmbientLight
@@ -62,6 +63,7 @@ import org.pureagave.zodiac.control.data.nav.NavSharePublisher
 import org.pureagave.zodiac.control.data.playa.PlayaMapRepository
 import org.pureagave.zodiac.control.data.prefs.CockpitPreferences
 import org.pureagave.zodiac.control.data.prefs.CockpitPrefsSnapshot
+import org.pureagave.zodiac.control.data.sensor.FailoverLocationSource
 import org.pureagave.zodiac.control.data.sensor.FakeLocationSource
 import org.pureagave.zodiac.control.data.sensor.LocationSourceRegistry
 import org.pureagave.zodiac.control.data.sensor.RoutedLocationSource
@@ -526,6 +528,71 @@ class CockpitViewModelTest {
                 assertEquals(listOf(LocationSourceType.SYSTEM), prefs.locationSources)
                 assertEquals(1, fake.stopCalls)
                 assertEquals(1, system.startCalls)
+            } finally {
+                store.clear()
+            }
+        }
+
+    // --- COCKPIT-TLM Phase A: gpsUsingFallback is the one new state field the
+    // failover leg needed. RoutedLocationSource.usingFallback already existed
+    // and was tested; this pins that the VM's new init collector actually
+    // reads it, and that the fold is live (not latched once true). ---
+
+    @Test
+    fun gpsUsingFallback_foldsFromTheRoutedSourceAndIsNotLatched() =
+        runTest {
+            val fakeStub = StubLocationSource(LocationSourceType.FAKE)
+            val netStub = StubLocationSource(LocationSourceType.NET)
+            val sysStub = StubLocationSource(LocationSourceType.SYSTEM)
+            // Small, fast thresholds so the test doesn't need to advance
+            // minutes of virtual time — the timing rules themselves are
+            // FailoverLocationSourceTest's job, not this fold's.
+            val failover =
+                FailoverLocationSource(
+                    primary = netStub,
+                    fallback = sysStub,
+                    scope = this.backgroundScope,
+                    policy = LocationFailoverPolicy(dropAfterMs = 1_000L, recoverAfterMs = 1_000L),
+                    tickMs = 250L,
+                    nowMs = { testScheduler.currentTime },
+                )
+            val routed =
+                RoutedLocationSource(
+                    registry = LocationSourceRegistry(sources = listOf(fakeStub, failover)),
+                    scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler)),
+                    initialType = LocationSourceType.FAKE,
+                )
+            val store = ViewModelStore()
+            try {
+                val factory =
+                    CockpitViewModelFactory(
+                        telemetryRepository = StaticTelemetryRepo(),
+                        vehicleGateway = FakeVehicleGateway(),
+                        playaMapRepository = NoOpPlayaMapRepository,
+                        locationSource = routed,
+                        preferences = NoOpCockpitPreferences(),
+                        fakeLocationSource = FakeLocationSource(scope = this.backgroundScope),
+                    )
+                val vm = ViewModelProvider(store, factory)[CockpitViewModel::class.java]
+                advanceUntilIdle()
+                assertFalse("FAKE isn't a failover-capable source", vm.uiState.value.gpsUsingFallback)
+
+                // Switch onto NET (the failover-wrapped source) and let both
+                // legs come up: beacon dead, this tablet's own GNSS answering.
+                vm.selectLocationSource(LocationSourceType.NET)
+                advanceUntilIdle()
+                netStub.emit(LocationSourceState.Disconnected)
+                sysStub.emit(LocationSourceState.Active(GpsFix(location = LatLon(lon = -119.2, lat = 40.78))))
+                advanceTimeBy(2_000L)
+                runCurrent()
+                assertTrue("dead beacon + healthy fallback must flip to LOCAL BACKUP", vm.uiState.value.gpsUsingFallback)
+
+                // The beacon comes back: the fold must follow it back down —
+                // proving the flag isn't latched once it goes true.
+                netStub.emit(LocationSourceState.Active(GpsFix(location = LatLon(lon = -119.2, lat = 40.78))))
+                advanceTimeBy(2_000L)
+                runCurrent()
+                assertFalse("a recovered beacon must clear the fallback flag", vm.uiState.value.gpsUsingFallback)
             } finally {
                 store.clear()
             }
@@ -1195,6 +1262,35 @@ class CockpitViewModelTest {
                 advanceTimeBy(SHOCK_ALERT_MS)
                 runCurrent()
                 assertNull(vm.uiState.value.shockAlertG)
+            } finally {
+                store.clear()
+            }
+        }
+
+    @Test
+    fun lastShockG_isPersistentAndOutlivesTheTransientAlertClearing() =
+        runTest {
+            // The pair this pins: shockAlertG is a 2 s banner, lastShockG
+            // (COCKPIT-TLM Phase A) is the ticker's persistent SHK reading and
+            // must NOT clear on the same timer.
+            val sensors = MutableStateFlow(BeaconSensors())
+            val store = ViewModelStore()
+            try {
+                val vm = beaconVm(this.backgroundScope, store, sensors)
+                advanceUntilIdle()
+                assertNull(vm.uiState.value.lastShockG)
+
+                sensors.value = BeaconSensors(lastShockG = 1.2, shockCount = 1)
+                runCurrent()
+                assertEquals(1.2, vm.uiState.value.lastShockG!!, 0.0)
+                assertEquals(1.2, vm.uiState.value.shockAlertG!!, 0.0)
+
+                advanceTimeBy(SHOCK_ALERT_MS)
+                runCurrent()
+                // The transient banner clears...
+                assertNull(vm.uiState.value.shockAlertG)
+                // ...but the persistent ticker reading does not.
+                assertEquals(1.2, vm.uiState.value.lastShockG!!, 0.0)
             } finally {
                 store.clear()
             }

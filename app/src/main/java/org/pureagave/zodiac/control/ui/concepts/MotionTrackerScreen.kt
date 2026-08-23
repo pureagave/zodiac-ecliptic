@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Text
@@ -20,7 +21,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -32,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.pureagave.zodiac.control.core.geo.LatLon
+import org.pureagave.zodiac.control.ui.debug.devControlPanel
 import org.pureagave.zodiac.control.ui.ops.OPS_FOOTER_ONE_LINE
 import org.pureagave.zodiac.control.ui.ops.OPS_FOOTER_TWO_LINE
 import org.pureagave.zodiac.control.ui.ops.driveSelectionOf
@@ -45,6 +49,13 @@ import org.pureagave.zodiac.control.ui.viewmodel.CockpitViewModel
 private const val SWEEP_PERIOD_S = 4f
 private const val SWEEP_WIDTH_DEG = 60f
 private const val FORWARD_CONE_DEG = 70f
+
+/**
+ * The TELEMETRY box's minimum legible height — enough for the header, the
+ * status line and a few ticker lines. Matches `InstrumentBayScreen`'s
+ * already-working portrait fixed height so both concepts read the same.
+ */
+private val TELEMETRY_BOX_MIN_HEIGHT = 170.dp
 
 /**
  * Dim base palette — features barely show until the sweep arm lights them up.
@@ -89,6 +100,9 @@ fun motionTrackerScreen(
     val theme = ThemeTracker
     val config = LocalConfiguration.current
     val portrait = config.screenHeightDp > config.screenWidthDp
+    // Screen-local ephemeral UI state — deliberately not CockpitUiState, not
+    // persisted: a reboot must never come up with the bench panel open.
+    var devPanelOpen by remember { mutableStateOf(false) }
 
     // Backing state for the sweep angle. Deliberately NOT read in this
     // composable's body — only the map/arm draw lambdas read it (via the
@@ -169,29 +183,37 @@ fun motionTrackerScreen(
                 StatPair("RANGE", "%.0fm".format(rangeMetres(state.pixelsPerMeter)), "ZOOM", "%.2f".format(state.pixelsPerMeter))
 
             if (portrait) {
-                // Portrait: scope on top (square, full width), stats + scrollable
-                // controls stacked below.
+                // Portrait: scope shrinks to whatever's left (weighted, like
+                // the landscape scope below) once the stat row and the
+                // TELEMETRY box's fixed floor height are subtracted. The
+                // scope previously forced a full-width square via
+                // `fillMaxWidth().aspectRatio(1f)`, which on a tall-narrow
+                // portrait screen exceeded the whole column's height budget
+                // on its own and starved the (weight(1f)) TELEMETRY box below
+                // it to 0dp — confirmed on the A54. Fixed height here mirrors
+                // `InstrumentBayScreen`'s already-working portrait treatment.
                 Column(Modifier.weight(1f)) {
-                    radarScope(
-                        mapInputs = mapInputs,
-                        viewModel = viewModel,
-                        theme = theme,
-                        sweepDeg = { sweepDeg.floatValue },
-                        activeTargetLocation = state.activeDriveTarget?.location,
-                        modifier = Modifier.fillMaxWidth().aspectRatio(1f),
-                    )
+                    Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        radarScope(
+                            mapInputs = mapInputs,
+                            viewModel = viewModel,
+                            theme = theme,
+                            sweepDeg = { sweepDeg.floatValue },
+                            activeTargetLocation = state.activeDriveTarget?.location,
+                            modifier = Modifier.fillMaxHeight().aspectRatio(1f),
+                        )
+                    }
                     Spacer(Modifier.height(6.dp))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         trackerStatColumn(pair = bearingSpeed, theme = theme, modifier = Modifier.weight(1f))
                         trackerStatColumn(pair = rangeZoom, theme = theme, modifier = Modifier.weight(1f))
                     }
                     Spacer(Modifier.height(6.dp))
-                    conceptControlStrip(
+                    telemetryBox(
                         state = state,
-                        viewModel = viewModel,
                         theme = theme,
-                        modifier = Modifier.fillMaxWidth().weight(1f),
-                        showTiltToggle = false,
+                        onOpenDevPanel = { devPanelOpen = true },
+                        modifier = Modifier.fillMaxWidth().height(TELEMETRY_BOX_MIN_HEIGHT),
                     )
                 }
             } else {
@@ -215,12 +237,16 @@ fun motionTrackerScreen(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         trackerStatColumn(pair = rangeZoom, theme = theme, modifier = Modifier.fillMaxWidth())
-                        conceptControlStrip(
+                        // weight(fill = false) + heightIn floor: takes the
+                        // rest of this column's height (there's nothing else
+                        // below it) but can never be squeezed under a legible
+                        // minimum, which a plain unweighted/unbounded modifier
+                        // here left undefined (see the portrait bug above).
+                        telemetryBox(
                             state = state,
-                            viewModel = viewModel,
                             theme = theme,
-                            modifier = Modifier.fillMaxWidth(),
-                            showTiltToggle = false,
+                            onOpenDevPanel = { devPanelOpen = true },
+                            modifier = Modifier.fillMaxWidth().weight(1f, fill = false).heightIn(min = TELEMETRY_BOX_MIN_HEIGHT),
                         )
                     }
                 }
@@ -269,6 +295,10 @@ fun motionTrackerScreen(
             // Raised above the ops footer so it doesn't cover the CAMP readout.
             modifier = Modifier.align(Alignment.BottomEnd).padding(end = 16.dp, bottom = 58.dp),
         )
+
+        if (devPanelOpen) {
+            devControlPanel(state = state, viewModel = viewModel, theme = theme, onClose = { devPanelOpen = false })
+        }
     }
 }
 

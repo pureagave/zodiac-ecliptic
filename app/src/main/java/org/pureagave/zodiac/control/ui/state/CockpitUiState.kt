@@ -174,6 +174,14 @@ data class CockpitUiState(
      */
     val shockAlertG: Double? = null,
     /**
+     * The *persistent* last `$ZSHK` peak g this session — unlike [shockAlertG],
+     * this is never cleared on a timer. Null until the first shock event this
+     * session. Feeds the TELEMETRY ticker's SHK line and the AMBIENT+SHOCK
+     * tile (Phase C), which both need "what was the last jolt" to outlive the
+     * 2 s alert banner.
+     */
+    val lastShockG: Double? = null,
+    /**
      * Whether *this device* may set + broadcast the shared nav target
      * (`$ZNAV`) — true on the S9+ and A54, false on the two Fires. Automatic:
      * it *is*
@@ -196,6 +204,15 @@ data class CockpitUiState(
      * existing collector.
      */
     val navAuthority: Boolean = true,
+    /**
+     * Mirrors [org.pureagave.zodiac.control.data.sensor.RoutedLocationSource.usingFallback]:
+     * true while the *currently selected* source is quietly running on its
+     * backup leg (today only NET, backed by [org.pureagave.zodiac.control.data.sensor.FailoverLocationSource]
+     * onto this tablet's own GNSS). Only meaningful alongside [selectedLocationSource]
+     * and [locationState] — see [org.pureagave.zodiac.control.core.sensor.telemetrySourceStatus],
+     * which is the one place this should be read through.
+     */
+    val gpsUsingFallback: Boolean = false,
 ) {
     /**
      * The three beacon readings the ops footer draws, bundled — they arrive on
