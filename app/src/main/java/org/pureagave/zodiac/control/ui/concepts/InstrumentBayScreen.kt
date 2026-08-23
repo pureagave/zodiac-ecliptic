@@ -193,15 +193,20 @@ fun instrumentBayScreen(
                 }
             }
 
-            driveToBar(
-                theme = theme,
-                active = driveSelectionOf(state.customTarget != null, state.driveToBath, state.navTarget),
-                onSelect = viewModel::setNavTarget,
-                onSelectBath = viewModel::driveToNearestToilet,
-                onOpenAddress = { viewModel.setAddressEntryOpen(true) },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = state.navAuthority,
-            )
+            // Passenger/non-authority displays (the Fires) never show the
+            // routing buttons — enabled=false on a non-authority device would
+            // just be a dead control, and this project omits those rather
+            // than dims them. Authority devices (hero + driver) are unchanged.
+            if (state.navAuthority) {
+                driveToBar(
+                    theme = theme,
+                    active = driveSelectionOf(state.customTarget != null, state.driveToBath, state.navTarget),
+                    onSelect = viewModel::setNavTarget,
+                    onSelectBath = viewModel::driveToNearestToilet,
+                    onOpenAddress = { viewModel.setAddressEntryOpen(true) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
             // Operational readout footer: BRC clock / sunrise-sunset / return-to-camp,
             // in the bay's tile aesthetic (replaced the decorative hazard chevron).
             opsReadout(

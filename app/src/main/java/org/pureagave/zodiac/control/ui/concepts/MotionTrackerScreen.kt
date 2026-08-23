@@ -252,16 +252,23 @@ fun motionTrackerScreen(
                 }
             }
 
-            Spacer(Modifier.height(6.dp))
-            driveToBar(
-                theme = theme,
-                active = driveSelectionOf(state.customTarget != null, state.driveToBath, state.navTarget),
-                onSelect = viewModel::setNavTarget,
-                onSelectBath = viewModel::driveToNearestToilet,
-                onOpenAddress = { viewModel.setAddressEntryOpen(true) },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = state.navAuthority,
-            )
+            // Passenger/non-authority displays (the Fires) never show the
+            // routing buttons — enabled=false on a non-authority device would
+            // just be a dead control, and this project omits those rather
+            // than dims them. Authority devices (hero + driver) are unchanged.
+            // The flanking Spacer stays outside the guard so the gap before
+            // opsReadout is identical whether or not the bar renders.
+            if (state.navAuthority) {
+                Spacer(Modifier.height(6.dp))
+                driveToBar(
+                    theme = theme,
+                    active = driveSelectionOf(state.customTarget != null, state.driveToBath, state.navTarget),
+                    onSelect = viewModel::setNavTarget,
+                    onSelectBath = viewModel::driveToNearestToilet,
+                    onOpenAddress = { viewModel.setAddressEntryOpen(true) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
             Spacer(Modifier.height(6.dp))
             opsReadout(
                 theme = theme,
