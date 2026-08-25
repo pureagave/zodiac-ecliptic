@@ -44,6 +44,57 @@ class PassengerDataTest {
     }
 
     @Test
+    fun souls_leaves_the_rotation_when_the_rig_is_wholly_blind() {
+        // The bug this pins, measured on the fleet 2026-08-25: with every
+        // camera unplugged the edge box stays LIVE at 10 Hz and emits a bare
+        // ZCOVER (nothing covered), so the card showed "SOULS DETECTED 0 —
+        // THERMAL, ALL ROUND THE VEHICLE" — a confident full-circle all-clear
+        // from a rig that could see nothing. Liveness alone is not enough.
+        val blind =
+            availablePassengerCards(
+                PassengerInputs(visionLive = true, visionCoverage = emptyList()),
+            )
+
+        assertFalse(blind.contains(PassengerCard.SOULS))
+    }
+
+    @Test
+    fun souls_survives_a_partly_blind_rig() {
+        // One camera down is not no cameras: the remaining arc is real, so the
+        // card still has something honest to say. A gate that dropped on *any*
+        // blind arc would take the card away for the normal fleet case, where
+        // the ring never covers the full circle.
+        val partial =
+            availablePassengerCards(
+                PassengerInputs(visionLive = true, visionCoverage = listOf(-64f..65f)),
+            )
+
+        assertTrue(partial.contains(PassengerCard.SOULS))
+    }
+
+    @Test
+    fun souls_stays_when_there_is_no_coverage_signal_at_all() {
+        // Null is not empty. An edge box too old to emit ZCOVER, or a signal
+        // gone stale, leaves the surround ring on its static covered-arc
+        // fallback — so the rig is presumed watching and the card stays.
+        // Reading null as "blind" would blank the card for a rig that is in
+        // fact looking, which is the opposite failure.
+        val noSignal =
+            availablePassengerCards(
+                PassengerInputs(visionLive = true, visionCoverage = null),
+            )
+
+        assertTrue(noSignal.contains(PassengerCard.SOULS))
+    }
+
+    @Test
+    fun the_rig_watch_predicate_reads_coverage_the_way_the_ring_does() {
+        assertTrue("null = static-arc fallback, presumed watching", rigWatchesSomething(null))
+        assertFalse("empty = live feed watching nothing", rigWatchesSomething(emptyList()))
+        assertTrue("real arcs", rigWatchesSomething(listOf(-64f..65f)))
+    }
+
+    @Test
     fun the_full_bus_lights_up_every_card() {
         val cards =
             availablePassengerCards(

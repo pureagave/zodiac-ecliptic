@@ -496,6 +496,7 @@ private fun passengerInputs(
         hasFix = state.egoFix != null,
         hasAudio = audio != null,
         visionLive = state.visionFeed == VisionFeed.LIVE,
+        visionCoverage = state.visionCoverage,
         hasShock = state.shockAlertG != null || state.beaconReadout.shockG != null,
         odometer = state.odometer,
         artAhead = artCount,

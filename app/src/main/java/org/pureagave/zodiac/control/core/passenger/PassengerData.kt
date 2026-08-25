@@ -33,10 +33,21 @@ fun availablePassengerCards(inputs: PassengerInputs): List<PassengerCard> =
             PassengerCard.MAP -> inputs.hasFix && inputs.hasMap
             // Silence is data (the beat just dropped out); no beacon is not.
             PassengerCard.AUDIO -> inputs.hasAudio
-            // The Jetson feed has to be genuinely live — a demo crowd shown to
-            // passengers as "souls detected" is exactly the lie this project
-            // keeps refusing to tell.
-            PassengerCard.SOULS -> inputs.visionLive
+            // Two gates, and the second is the one that bites. The feed has to
+            // be genuinely live — a demo crowd shown to passengers as "souls
+            // detected" is exactly the lie this project keeps refusing to tell.
+            // AND the rig has to be watching something, because the card's
+            // caption claims the whole circle ("THERMAL, ALL ROUND THE
+            // VEHICLE"): a live feed from a box whose cameras are all down
+            // reports zero contacts, which reads to a rider as a confident
+            // full-circle all-clear from a rig that can see nothing. Measured
+            // 2026-08-25 with every camera unplugged — the box stayed live at
+            // 10 Hz emitting a bare ZCOVER and the card sat there reading "0".
+            // The DRIVER ring already refuses exactly this (an empty coverage
+            // list makes SurroundRingCoverage.uncoveredArcs the whole circle,
+            // pinned by live_with_empty_coverage_is_wholly_blind_never_clear);
+            // this is that same invariant on the rider's surface.
+            PassengerCard.SOULS -> inputs.visionLive && rigWatchesSomething(inputs.visionCoverage)
             PassengerCard.BUMP -> inputs.hasShock
             PassengerCard.TRIP -> inputs.odometer != null
             // The ticker has a line to show if *either* GPS or any beacon
@@ -50,6 +61,23 @@ fun availablePassengerCards(inputs: PassengerInputs): List<PassengerCard> =
     }
 
 /**
+ * Whether the camera rig is watching *any* bearing at all.
+ *
+ * Reads `visionCoverage` exactly the way the surround ring reads it, rather
+ * than inventing a second interpretation of the same field:
+ *
+ *  - **null** — no fresh `ZCOVER` at all (an old edge box, or a signal gone
+ *    stale). The ring falls back to the static `SurroundRing.COVERED_ARCS`, so
+ *    coverage is assumed and the card stays. Dropping it here would blank the
+ *    card for a rig that is in fact watching.
+ *  - **empty** — a live feed explicitly reporting nothing covered. A bare
+ *    `ZCOVER` frame is the wire's way of failing BLIND rather than clear (see
+ *    `CoverageProtocol`), so the whole ring is blind and the card has to go.
+ *  - **non-empty** — real arcs, so the card has something honest to say.
+ */
+internal fun rigWatchesSomething(coverage: List<ClosedFloatingPointRange<Float>>?): Boolean = coverage == null || coverage.isNotEmpty()
+
+/**
  * The minimum the availability rules need to know.
  *
  * [hasFix] is `state.egoFix != null` (`PassengerScreen.kt`'s `passengerInputs`)
@@ -61,6 +89,13 @@ data class PassengerInputs(
     val hasFix: Boolean = false,
     val hasAudio: Boolean = false,
     val visionLive: Boolean = false,
+    /**
+     * Covered bearing arcs from the edge box's `ZCOVER` channel —
+     * `state.visionCoverage`, passed through untouched so the *decision* stays
+     * in core rather than in the composable. Null = no fresh signal, empty = a
+     * live feed watching nothing. See [rigWatchesSomething].
+     */
+    val visionCoverage: List<ClosedFloatingPointRange<Float>>? = null,
     val hasShock: Boolean = false,
     val odometer: Odometer? = null,
     val artAhead: Int = 0,
