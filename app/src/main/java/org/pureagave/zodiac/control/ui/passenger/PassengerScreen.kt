@@ -42,6 +42,7 @@ import org.pureagave.zodiac.control.core.passenger.CardRotation
 import org.pureagave.zodiac.control.core.passenger.PassengerCard
 import org.pureagave.zodiac.control.core.passenger.PassengerInputs
 import org.pureagave.zodiac.control.core.passenger.PassengerView
+import org.pureagave.zodiac.control.core.passenger.RotationHold
 import org.pureagave.zodiac.control.core.passenger.approachingArt
 import org.pureagave.zodiac.control.core.passenger.artNearby
 import org.pureagave.zodiac.control.core.passenger.availablePassengerCards
@@ -195,7 +196,17 @@ fun passengerScreen(
         label = "sweep",
     )
 
-    Box(modifier = Modifier.fillMaxSize().background(Color.Black), contentAlignment = Alignment.Center) {
+    Box(
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .background(Color.Black)
+                .advanceTapInput {
+                    rotation.advance(tickMs)
+                    view = rotation.view(tickMs, latest.value.first, hold = RotationHold.NONE)
+                },
+        contentAlignment = Alignment.Center,
+    ) {
         val current = view
         if (current == null) {
             // Never a blank screen, and never a fake reading either.

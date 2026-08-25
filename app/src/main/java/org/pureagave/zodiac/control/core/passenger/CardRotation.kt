@@ -159,6 +159,42 @@ class CardRotation(
     }
 
     /**
+     * Manually advance to the next steady card — the passenger tapped the
+     * screen. One tap, one card, regardless of what the rotation was doing:
+     *
+     *  - [index] steps forward once; the next [view] reduces it modulo the
+     *    available list, so wrapping past the end is free and a tap can never
+     *    index out of bounds even if the list shrinks underneath it.
+     *  - [lastAdvanceMs] restarts at [nowMs], so the tapped-to card gets a
+     *    full dwell rather than the remainder of the old card's.
+     *  - [heldElapsedMs] resets, so a hold that begins on the new card
+     *    (tapping to ART while parked) treats it as freshly arrived —
+     *    stale elapsed time would otherwise flip it moments after release.
+     *  - [interrupt] clears: a tap while BUMP/ART/WHERE is up means "give me
+     *    the next actual card", and a tap that visibly does nothing reads
+     *    as broken.
+     *
+     * Deliberately does NOT touch the interrupt-layer bookkeeping
+     * ([interruptVisible] / [interruptShownSinceMs] / [steadyUntilMs]). The
+     * next [view] sees the layer hidden and [noteInterruptTransition] closes
+     * it, opening the normal steady-guarantee window — and that window is
+     * what makes a tap-dismissal stick: ART re-arms every tick while a piece
+     * is ahead, and without the window it would barge straight back over the
+     * card the passenger just asked for. Clearing the flags here would
+     * suppress that shown->hidden edge, grant no window, and undo the tap one
+     * tick later.
+     *
+     * @param nowMs the rotation's clock (the screen's tick clock, not wall
+     *   time) — the same timebase every other entry point uses.
+     */
+    fun advance(nowMs: Long) {
+        index++
+        lastAdvanceMs = nowMs
+        heldElapsedMs = 0L
+        interrupt = null
+    }
+
+    /**
      * The two layer-level gates, independent of [hold]'s own interrupt guard
      * (the caller has already established the interrupt is [fresh]):
      * - the guarantee window from a previous shown→hidden transition must

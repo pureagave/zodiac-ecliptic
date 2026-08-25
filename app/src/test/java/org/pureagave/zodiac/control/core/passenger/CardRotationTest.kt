@@ -546,6 +546,104 @@ class CardRotationTest {
         assertEquals(all[3], afterThreeDwells.card)
     }
 
+    // --- tap-to-advance ------------------------------------------------------
+
+    @Test
+    fun a_tap_advances_to_the_next_card() {
+        val r = rotation()
+        assertEquals(all[0], r.view(0, all)!!.card)
+
+        r.advance(0)
+
+        assertEquals(all[1], r.view(0, all)!!.card)
+    }
+
+    @Test
+    fun a_tap_gives_the_new_card_a_full_dwell() {
+        val r = rotation()
+        r.view(0, all)
+
+        r.advance(DWELL / 2)
+
+        assertEquals(all[1], r.view(DWELL / 2 + DWELL - 1, all)!!.card)
+        assertEquals(all[2], r.view(DWELL / 2 + DWELL, all)!!.card)
+    }
+
+    @Test
+    fun a_tap_dismisses_an_active_interrupt_and_shows_the_next_steady_card() {
+        val r = rotation()
+        r.view(0, all)
+        r.interruptWith(PassengerCard.BUMP, nowMs = 1_000)
+        assertEquals(CardReason.INTERRUPT, r.view(1_000, all)!!.reason)
+
+        r.advance(2_000)
+
+        val after = r.view(2_000, all)!!
+        assertEquals(all[1], after.card)
+        assertEquals(CardReason.ROTATION, after.reason)
+    }
+
+    @Test
+    fun a_tap_dismissal_sticks_against_a_rearming_interrupt() {
+        // Pins the deliberate decision NOT to touch the interrupt-layer
+        // bookkeeping in advance(): the tap's implicit interrupt-clear closes
+        // the interrupt-visible edge, which opens a steady-guarantee window —
+        // and it's THAT window, not the cleared `interrupt` field, that keeps
+        // ART from barging straight back over the card the passenger tapped
+        // to. A mutant that also zeroed interruptVisible/steadyUntilMs in
+        // advance() would suppress that edge, grant no window, and let ART
+        // re-show one tick after the tap — this test catches exactly that.
+        val r = rotation()
+        r.view(0, all)
+        r.interruptWith(PassengerCard.ART, nowMs = 1_000)
+        assertEquals(CardReason.INTERRUPT, r.view(1_000, all)!!.reason)
+
+        r.advance(2_000)
+        val after = r.view(2_000, all)!!
+        assertEquals(all[1], after.card)
+        assertEquals(CardReason.ROTATION, after.reason)
+
+        r.interruptWith(PassengerCard.ART, nowMs = 3_000)
+        val stillDismissed = r.view(3_000, all)!!
+
+        assertEquals(all[1], stillDismissed.card)
+        assertEquals(CardReason.ROTATION, stillDismissed.reason)
+    }
+
+    @Test
+    fun a_tap_wraps_from_the_last_card_to_the_first() {
+        val r = rotation()
+        r.view(0, all)
+        repeat(all.size - 1) { r.advance(0) }
+
+        assertEquals(all.last(), r.view(0, all)!!.card)
+
+        r.advance(0)
+
+        assertEquals(all[0], r.view(0, all)!!.card)
+    }
+
+    @Test
+    fun a_tap_with_nothing_available_is_safe_and_recovers() {
+        val r = rotation()
+
+        r.advance(0)
+
+        assertNull(r.view(0, emptyList()))
+        assertEquals(all[1], r.view(0, all)!!.card)
+    }
+
+    @Test
+    fun a_tap_survives_the_available_set_shrinking() {
+        val r = rotation()
+        repeat(all.size) { r.view(DWELL * it.toLong(), all) }
+
+        r.advance(DWELL * all.size)
+
+        val shrunk = r.view(DWELL * all.size, listOf(PassengerCard.WHERE))
+        assertEquals(PassengerCard.WHERE, shrunk!!.card)
+    }
+
     private companion object {
         const val DWELL = 25_000L
         const val INTERRUPT = 8_000L
