@@ -3,6 +3,9 @@ package org.pureagave.zodiac.control.core.kiosk
 /** The two hidden hot-zones the kiosk-exit code is tapped on (the right-edge corners). */
 enum class KioskTapZone { TOP_END, BOTTOM_END }
 
+/** Edge, in dp, of the hidden TOP_END / BOTTOM_END corner hot zones drawn by CockpitScreen. */
+const val CORNER_HOT_ZONE_DP: Int = 56
+
 /**
  * Recognises the hidden kiosk-exit tap code.
  *

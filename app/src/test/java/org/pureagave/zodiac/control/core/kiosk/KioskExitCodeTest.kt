@@ -68,4 +68,30 @@ class KioskExitCodeTest {
         listOf(b, t, b, t, b, t).forEachIndexed { i, z -> last = c.tap(z, i * 500L) }
         assertTrue("the documented six-tap default code completes", last)
     }
+
+    @Test
+    fun the_hidden_corner_stays_a_usable_finger_target() {
+        // CORNER_HOT_ZONE_DP sizes the invisible squares CockpitScreen draws in
+        // the two right-edge corners: the kiosk-exit taps recognised above, the
+        // log-viewer long-press, and the passenger-role toggle. On a kiosked
+        // tablet those taps are the ONLY recovery short of a factory reset
+        // (docs/KIOSK.md), so the square has to stay big enough to hit blind,
+        // in the dark, on a moving vehicle.
+        //
+        // Asserted as a floor against Android's 48 dp minimum touch target
+        // rather than as `== 56`, which would only mirror the constant and
+        // would fail on any deliberate change. The ceiling is guarded from the
+        // other side, in PassengerMapCardModelTest: growing this zone past the
+        // passenger recenter button's bottom inset re-occludes that button and
+        // fails there.
+        assertTrue(
+            "hidden corner shrank to $CORNER_HOT_ZONE_DP dp, below the 48 dp minimum touch target",
+            CORNER_HOT_ZONE_DP >= MIN_TOUCH_TARGET_DP,
+        )
+    }
+
+    private companion object {
+        /** Android's minimum recommended touch target, in dp. */
+        const val MIN_TOUCH_TARGET_DP = 48
+    }
 }

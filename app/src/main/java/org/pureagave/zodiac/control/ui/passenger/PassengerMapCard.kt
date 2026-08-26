@@ -1,8 +1,10 @@
 package org.pureagave.zodiac.control.ui.passenger
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -17,11 +19,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.flow.first
+import org.pureagave.zodiac.control.core.passenger.PASSENGER_RECENTER_END_DP
 import org.pureagave.zodiac.control.core.passenger.passengerMapStartZoom
+import org.pureagave.zodiac.control.core.passenger.passengerRecenterBottomInsetDp
 import org.pureagave.zodiac.control.ui.RetroFont
 import org.pureagave.zodiac.control.ui.concepts.ConceptTheme
 import org.pureagave.zodiac.control.ui.concepts.EgoStyle
@@ -74,6 +79,23 @@ import org.pureagave.zodiac.control.ui.viewmodel.CockpitViewModel
  *    failed load means `playaMap == null`, and this card's `hasFix && hasMap`
  *    availability gate (`core/passenger/PassengerData.kt`) has already
  *    dropped it out of the rotation before this composable runs.
+ *  - The recenter button's bottom inset is
+ *    [org.pureagave.zodiac.control.core.passenger.passengerRecenterBottomInsetDp],
+ *    not a constant: at a flat 16 dp the button was unreachable on both tablets
+ *    for two independent reasons (measured 2026-08-25/26 — occluded by
+ *    `CockpitScreen.kt`'s hidden BottomEnd corner hot zone, *and* clipped off
+ *    the bottom of the visible window by the Fire's navigation bar under
+ *    edge-to-edge layout). Core decides the number; this file only reads the
+ *    platform inset and applies it. The inset is deliberately paid **on the
+ *    button alone** — not on this card's outer [Box] or `passengerScreen`'s
+ *    root, which would letterbox every full-bleed card and pull the map's
+ *    draw/pan surface off the glass; the map must keep drawing under the bar.
+ *    Nor on `CockpitScreen`'s root, which would move all four hidden corner
+ *    gestures and the kiosk-exit tap zones on already-provisioned tablets.
+ *  - `end` stays a flat [PASSENGER_RECENTER_END_DP]: neither tablet shows a
+ *    side navigation bar in either orientation (measured — the Fire HD's bar
+ *    is along the bottom edge in landscape too), so there is no horizontal
+ *    inset to clear, and the occlusion is already handled on the bottom axis.
  */
 @Composable
 fun mapCard(
@@ -97,6 +119,17 @@ fun mapCard(
         val sized = snapshotFlow { canvasSize }.first { it.width > 0 && it.height > 0 }
         passengerMapStartZoom(sized.width, sized.height)?.let(viewModel::setPixelsPerMeter)
     }
+
+    // This device's real bottom system-bar inset, in dp. Read here because it is
+    // a platform measurement, not a decision — what to do with it belongs to
+    // passengerRecenterBottomInsetDp in core. safeDrawing rather than
+    // navigationBars so a display cutout counts too. Zero on a tablet that
+    // actually honours the immersive request (the hero S9+); 48 on a Fire HD,
+    // which keeps its bar even though MainActivity asks for it to be hidden.
+    val navBarDp =
+        with(LocalDensity.current) {
+            WindowInsets.safeDrawing.getBottom(this).toDp().value.toInt()
+        }
 
     Box(
         modifier =
@@ -157,7 +190,13 @@ fun mapCard(
                 passengerMapStartZoom(canvasSize.width, canvasSize.height)?.let(viewModel::setPixelsPerMeter)
                 onMapTouch(false)
             },
-            modifier = Modifier.align(Alignment.BottomEnd).padding(RECENTER_PADDING.dp),
+            modifier =
+                Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(
+                        end = PASSENGER_RECENTER_END_DP.dp,
+                        bottom = passengerRecenterBottomInsetDp(navBarDp).dp,
+                    ),
         )
     }
 }
@@ -188,4 +227,3 @@ private val PassengerMapPalette =
 private const val CAPTION_SP = 16
 private const val CAPTION_LETTER_SPACING = 4
 private const val CAPTION_TOP_PADDING = 14
-private const val RECENTER_PADDING = 16

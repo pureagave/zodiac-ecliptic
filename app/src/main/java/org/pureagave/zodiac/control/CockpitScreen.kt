@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.StateFlow
 import org.pureagave.zodiac.control.burnin.BurnInMitigationManager
 import org.pureagave.zodiac.control.burnin.burnInScaffold
 import org.pureagave.zodiac.control.core.geo.GoldenSpike
+import org.pureagave.zodiac.control.core.kiosk.CORNER_HOT_ZONE_DP
 import org.pureagave.zodiac.control.core.kiosk.KioskExitCode
 import org.pureagave.zodiac.control.core.kiosk.KioskTapZone
 import org.pureagave.zodiac.control.core.log.RollingFileLog
@@ -194,5 +195,14 @@ private fun onKioskCornerTap(
     if (code.tap(zone, System.currentTimeMillis())) onExit()
 }
 
-/** Corner hot-zone for the log-viewer long-press; mirrors the burn-in scaffold's. */
-private val LOG_HOT_ZONE = 56.dp
+/**
+ * Corner hot-zone for the log-viewer long-press; mirrors the burn-in scaffold's.
+ *
+ * The size itself lives in core ([CORNER_HOT_ZONE_DP]) because it is not only a
+ * layout number here: anything drawn into a bottom/top-end corner elsewhere has
+ * to clear this square or these invisible boxes — later siblings, so topmost —
+ * silently eat its taps. `core/passenger/PassengerMapCardModel.kt` computes the
+ * passenger recenter button's inset against it, and its tests read the same
+ * constant so they cannot drift from the zone the app actually draws.
+ */
+private val LOG_HOT_ZONE = CORNER_HOT_ZONE_DP.dp
