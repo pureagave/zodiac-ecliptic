@@ -231,7 +231,29 @@ class SystemLocationSource(
 
     companion object {
         const val MIN_INTERVAL_MS: Long = 1_000L
-        const val MIN_DISTANCE_M: Float = 1f
+
+        /**
+         * **Zero, deliberately — never a distance filter.**
+         *
+         * `LocationManager.requestLocationUpdates` treats this as a *minimum
+         * displacement*: Android withholds every fix until the device has moved
+         * at least this far. With 1 m here a **stationary** vehicle got almost
+         * no callbacks, so [org.pureagave.zodiac.control.core.sensor.FixFreshness]
+         * (5 s) demoted the source to `Searching` between the sporadic updates
+         * that GPS noise happened to push past the threshold — the readout
+         * flapped `FIX` / `NO FIX` while parked, and under
+         * [FailoverLocationSource] each demotion bounced the fleet back to a NET
+         * primary that wasn't there.
+         *
+         * MEASURED at Black Rock City 2026-09-04 on the hero S9+: the tablet's
+         * own GNSS was healthy throughout (34 satellites, hAcc 3.8 m, fix age
+         * ~0 s at 1 Hz in `dumpsys location`) while the cockpit showed NO FIX —
+         * the fixes existed, the distance filter was withholding them.
+         *
+         * The interval alone ([MIN_INTERVAL_MS]) is the rate limit we want; a
+         * parked art car still has to know where it is.
+         */
+        const val MIN_DISTANCE_M: Float = 0f
         private const val NANOS_PER_MS: Long = 1_000_000L
         private const val MISSING_PERMISSION_MSG: String = "ACCESS_FINE_LOCATION not granted"
         private const val PROVIDER_DISABLED_MSG: String = "GPS_PROVIDER disabled"

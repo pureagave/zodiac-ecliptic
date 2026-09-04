@@ -42,6 +42,32 @@ class SystemLocationSourceTest {
         }
 
     @Test
+    fun updates_are_requested_with_no_distance_filter() =
+        runTest {
+            // The regression this pins, MEASURED at Black Rock City 2026-09-04
+            // on the hero S9+: requestLocationUpdates' distance argument is a
+            // minimum *displacement*, so a non-zero value makes Android withhold
+            // every fix from a STATIONARY vehicle. The tablet's GNSS was healthy
+            // the whole time (34 satellites, hAcc 3.8 m, fix age ~0 s at 1 Hz in
+            // dumpsys location) yet the cockpit read NO FIX, because only the
+            // occasional noise excursion past 1 m got through and FixFreshness
+            // demoted the source to Searching in between. Under
+            // FailoverLocationSource every demotion bounced the fleet back to a
+            // NET primary that wasn't there, which is the all-day
+            // Active/Searching flap in the field log.
+            //
+            // A parked art car still has to know where it is: rate-limit on the
+            // interval, never on distance.
+            val handle = RecordingHandle(grantPermission = true)
+            val source = SystemLocationSource(managerHandle = handle, scope = backgroundScope)
+
+            source.start()
+
+            assertEquals(0f, handle.lastDistanceM)
+            assertEquals(SystemLocationSource.MIN_INTERVAL_MS, handle.lastIntervalMs)
+        }
+
+    @Test
     fun stop_then_start_re_registers_listener() =
         runTest {
             val handle = RecordingHandle(grantPermission = true)
@@ -341,6 +367,8 @@ class SystemLocationSourceTest {
     ) : SystemLocationManagerHandle {
         var requestCount: Int = 0
         var removeCount: Int = 0
+        var lastIntervalMs: Long? = null
+        var lastDistanceM: Float? = null
         private var callbacks: SystemLocationManagerHandle.GpsCallbacks? = null
 
         override fun hasFineLocationPermission(): Boolean = grantPermission
@@ -351,6 +379,8 @@ class SystemLocationSourceTest {
             callbacks: SystemLocationManagerHandle.GpsCallbacks,
         ) {
             requestCount += 1
+            lastIntervalMs = intervalMs
+            lastDistanceM = distanceM
             this.callbacks = callbacks
             throwOnRequest?.let { throw it }
         }
