@@ -16,12 +16,12 @@ class DriveTargetTest {
 
     @Test
     fun address_lands_on_the_ring_radius_at_the_clock_bearing() {
-        val target = addressTarget(ClockTime(2, 15), "H", projection)!!
+        val target = addressTarget(ClockTime(7, 30), "E", projection)!!
         assertEquals("7:30 & E", target.label)
-        // Project back: it should sit on the H ring (1555 m) at the 2:15 bearing.
+        // Project back: it should sit on the E ring (1237 m) at the 7:30 bearing.
         val p = projection.project(target.location)
-        assertEquals(1555.0, distanceFromOrigin(p), 5.0)
-        assertEquals(clockToBearing(ClockTime(2, 15)), bearingFromOriginTo(p), 0.5)
+        assertEquals(1237.0, distanceFromOrigin(p), 5.0)
+        assertEquals(clockToBearing(ClockTime(7, 30)), bearingFromOriginTo(p), 0.5)
     }
 
     @Test

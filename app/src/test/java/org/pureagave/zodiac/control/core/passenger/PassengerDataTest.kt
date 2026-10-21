@@ -264,7 +264,7 @@ class PassengerDataTest {
 
     @Test
     fun theme_camps_are_not_counted_as_art() {
-        val mixed = listOf(art("Nova", PlayaPoint(10.0, 0.0)), camp("Camp Nebula", PlayaPoint(20.0, 0.0)))
+        val mixed = listOf(art("Nova", PlayaPoint(10.0, 0.0)), camp("Nebula Camp", PlayaPoint(20.0, 0.0)))
 
         val nearby = artNearby(mixed, ego = PlayaPoint(0.0, 0.0))
 

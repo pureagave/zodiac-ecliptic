@@ -67,26 +67,26 @@ class BundledGisTest {
         }
     }
 
-    // --- the end-to-end address gate: our camp -----------------------------
+    // --- the end-to-end address gate ---------------------------------------
 
     @Test
-    fun home_camp_address_lands_on_both_of_its_streets() {
-        // Camp Nebula is at 7:30 & E. The keypad resolves that through
-        // addressTarget(); the answer has to sit on the real polylines for
-        // both streets, not merely near the idealised circle.
+    fun a_typed_address_lands_on_both_of_its_streets() {
+        // The keypad resolves "4:45 & G" through addressTarget(); the answer
+        // has to sit on the real polylines for both streets, not merely near
+        // the idealised circle. 4:45 is a quarter-hour radial — the harder case.
         val projection = PlayaProjection(GoldenSpike.ACTIVE)
-        val target = addressTarget(ClockTime(hours = 2, minutes = 15), "H", projection)
-        checkNotNull(target) { "7:30 & E must resolve" }
+        val target = addressTarget(ClockTime(hours = 4, minutes = 45), "G", projection)
+        checkNotNull(target) { "4:45 & G must resolve" }
         val p = projection.project(target.location)
 
-        val ring = ringPointsByName()["H"] ?: error("no H ring")
-        val radial = radialSegments("2:15")
-        assertTrue("2:15 radial present in bundled GIS", radial.isNotEmpty())
+        val ring = ringPointsByName()["G"] ?: error("no G ring")
+        val radial = radialSegments("4:45")
+        assertTrue("4:45 radial present in bundled GIS", radial.isNotEmpty())
 
         val offRing = pointToPolylineDistance(p, ring)
         val offRadial = radial.minOf { pointToPolylineDistance(p, it) }
-        assertTrue("target is ${"%.1f".format(offRing)} m off the H ring", offRing < ADDRESS_TOLERANCE_M)
-        assertTrue("target is ${"%.1f".format(offRadial)} m off the 2:15 radial", offRadial < ADDRESS_TOLERANCE_M)
+        assertTrue("target is ${"%.1f".format(offRing)} m off the G ring", offRing < ADDRESS_TOLERANCE_M)
+        assertTrue("target is ${"%.1f".format(offRadial)} m off the 4:45 radial", offRadial < ADDRESS_TOLERANCE_M)
     }
 
     @Test

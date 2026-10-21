@@ -35,3 +35,32 @@ extra["zodiacVersionBase"] = zodiacVersionBase
 extra["zodiacGitSha"] = zodiacGitSha
 extra["zodiacGitDirty"] = zodiacGitDirty
 extra["zodiacCommitEpoch"] = zodiacCommitEpoch
+
+// --- HOME: the vehicle's home camp, read by both modules ------------------
+// The real camp lives only in the gitignored local.properties, so the public
+// tree carries nothing but the neutral default (7:30 & E on the 2026 grid).
+// Absent keys → the default; a key that is present but malformed fails the
+// build, because a silently-defaulted HOME would send the whole fleet to the
+// wrong place with nothing on screen to say so.
+//   zodiac.home.lat=40.7…   zodiac.home.lon=-119.1…
+val zodiacLocalProps =
+    java.util.Properties().apply {
+        rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) }
+    }
+
+fun homeCoord(
+    key: String,
+    default: Double,
+    range: ClosedFloatingPointRange<Double>,
+): Double {
+    val raw = zodiacLocalProps.getProperty(key) ?: return default
+    val v = raw.trim().toDoubleOrNull() ?: throw GradleException("local.properties: $key='$raw' is not a number")
+    if (v !in range) throw GradleException("local.properties: $key=$v is outside $range (Black Rock Desert)")
+    return v
+}
+
+if ((zodiacLocalProps.getProperty("zodiac.home.lat") == null) != (zodiacLocalProps.getProperty("zodiac.home.lon") == null)) {
+    throw GradleException("local.properties: set both zodiac.home.lat and zodiac.home.lon, or neither")
+}
+extra["zodiacHomeLat"] = homeCoord("zodiac.home.lat", 40.7832474, 40.6..41.0)
+extra["zodiacHomeLon"] = homeCoord("zodiac.home.lon", -119.2225761, -119.4..-119.0)

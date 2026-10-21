@@ -47,11 +47,13 @@ internal const val SIM_ALTITUDE_M = 1191.0
 /**
  * BRC presets, coordinates restated from `:app` (the modules share no code —
  * FLEET-1 decision 10). Sources cited per value; re-check when the city moves:
- * `app/.../core/geo/GoldenSpike.kt` (Y2026), `core/ops/Camp.kt`, `core/ops/NavTarget.kt`.
+ * `app/.../core/geo/GoldenSpike.kt` (Y2026), `core/ops/NavTarget.kt`. HOME is not
+ * restated: both modules read it from the same root-build value (gitignored
+ * `local.properties`, else the neutral default), the same one `:app`'s `Home` uses.
  */
 internal enum class SimPreset(val lat: Double, val lon: Double) {
     MAN(40.783247448000054, -119.20788409599999), // GoldenSpike.Y2026
-    HOME(40.7832474, -119.2225761), // Camp.HOME_CAMP (7:30 & E)
+    HOME(BuildConfig.HOME_LAT, BuildConfig.HOME_LON), // :app Home.LOCATION — same root-build value
     TEMPLE(40.78809942300006, -119.201499636), // NavTarget.TEMPLE 2026
 }
 

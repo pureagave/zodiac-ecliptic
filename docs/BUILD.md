@@ -36,11 +36,19 @@ JAVA_HOME=/path/to/jdk-17 ANDROID_HOME=/path/to/android-sdk ./gradlew ...
 
 ### `local.properties`
 
-Gitignored, and optional. `app/build.gradle.kts` reads one key from it:
+Gitignored, and optional. The build reads three keys from it:
 
 ```properties
 BM_API_KEY=<burning man api key>
+zodiac.home.lat=<home camp latitude>
+zodiac.home.lon=<home camp longitude>
 ```
+
+The two `zodiac.home.*` keys set HOME — the "return to camp" target — for both
+`:app` and `:beacon` (the beacon's GPS test-mode `HOME` preset), via the root
+`build.gradle.kts`. Set both or neither: absent, HOME is a neutral default
+(7:30 & E on the 2026 grid); half-set, non-numeric, or outside the Black Rock
+Desert, the build fails rather than ship a fleet pointed at the wrong place.
 
 Absent — as on CI — the key compiles to `""`, and the Burning Man discovery
 fetch will fail its HTTP call. That is not fatal: `DiscoveryRepository` keeps

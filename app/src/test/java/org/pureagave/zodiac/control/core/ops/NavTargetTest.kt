@@ -55,27 +55,33 @@ class NavTargetTest {
     }
 
     @Test
-    fun home_is_the_camp() {
-        assertEquals(Camp.HOME_CAMP, NavTarget.HOME.location)
+    fun home_is_the_configured_home() {
+        assertEquals(Home.LOCATION, NavTarget.HOME.location)
     }
 
     @Test
-    fun home_lands_on_the_two_bundled_gis_streets_of_its_address() {
-        // Independent source: the camp address. Heiau is the 2026 H ring, so
-        // "7:30 & E" must project onto both the bundled H arc and the
-        // bundled 2:15 radial — a wrong camp constant misses one or both.
+    fun default_home_lands_on_the_two_bundled_gis_streets_of_its_address() {
+        // Independent source: the default's stated address. "7:30 & E" must
+        // project onto both the bundled E arc and the bundled 7:30 radial — a
+        // wrong constant misses one or both.
         val projection = PlayaProjection(GoldenSpike.ACTIVE)
-        val p = projection.project(NavTarget.HOME.location)
-        val offArc = streetPoints("H", StreetKind.Arc).minOf { pointToPolylineDistance(p, it) }
-        val offRadial = streetPoints("2:15", StreetKind.Radial).minOf { pointToPolylineDistance(p, it) }
+        val p = projection.project(Home.DEFAULT)
+        val offArc = streetPoints("E", StreetKind.Arc).minOf { pointToPolylineDistance(p, it) }
+        val offRadial = streetPoints("7:30", StreetKind.Radial).minOf { pointToPolylineDistance(p, it) }
 
-        assertTrue("HOME is ${"%.1f".format(offArc)} m off the H arc", offArc < CORNER_TOLERANCE_M)
-        assertTrue("HOME is ${"%.1f".format(offRadial)} m off the 2:15 radial", offRadial < CORNER_TOLERANCE_M)
+        assertTrue("default HOME is ${"%.1f".format(offArc)} m off the E arc", offArc < CORNER_TOLERANCE_M)
+        assertTrue("default HOME is ${"%.1f".format(offRadial)} m off the 7:30 radial", offRadial < CORNER_TOLERANCE_M)
     }
 
     @Test
-    fun camp_address_is_the_human_facing_brc_address() {
-        assertEquals("7:30 & E", Camp.HOME_ADDRESS)
+    fun configured_home_is_inside_the_city() {
+        // A local.properties HOME is any lat/lon, so it can't be held to a
+        // street corner — but it must be in the city: a typo that lands it in
+        // the open desert would point the whole fleet at nothing. The trash
+        // fence is the city's outer bound; the deep playa ends well inside it.
+        val p = PlayaProjection(GoldenSpike.ACTIVE).project(Home.LOCATION)
+        val r = hypot(p.eastM, p.northM)
+        assertTrue("HOME is ${"%.0f".format(r)} m from the Man — outside the city", r < MAX_CITY_RADIUS_M)
     }
 
     private companion object {
@@ -88,6 +94,9 @@ class NavTargetTest {
         /** The GIS pins the Temple to ~2,499 ft / 44.9°; leave room for survey slop, not for a wrong city. */
         const val RANGE_TOLERANCE_M = 10.0
         const val BEARING_TOLERANCE_DEG = 0.5
+
+        /** Beyond the outermost ring (K, ~1753 m) with room for walk-in camping, inside the ~2.4 km fence. */
+        const val MAX_CITY_RADIUS_M = 2_400.0
 
         /** Half a street width — "the right corner" at BRC block scale. */
         const val CORNER_TOLERANCE_M = 10.0

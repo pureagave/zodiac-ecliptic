@@ -40,6 +40,10 @@ android {
         buildConfigField("String", "GIT_SHA", "\"$gitSha\"")
         buildConfigField("boolean", "GIT_DIRTY", "$gitDirty")
         buildConfigField("long", "GIT_COMMIT_EPOCH_SECONDS", "${commitEpoch}L")
+        // HOME comes from the root build (gitignored local.properties, else the
+        // neutral default) — see build.gradle.kts.
+        buildConfigField("double", "HOME_LAT", "${rootProject.extra["zodiacHomeLat"]}")
+        buildConfigField("double", "HOME_LON", "${rootProject.extra["zodiacHomeLon"]}")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {

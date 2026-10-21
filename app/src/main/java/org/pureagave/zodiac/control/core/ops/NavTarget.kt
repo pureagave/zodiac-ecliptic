@@ -9,14 +9,14 @@ import org.pureagave.zodiac.control.core.geo.LatLon
  * to the active one (see `ui/ops/opsReadout`), defaulting to [HOME].
  *
  * Coordinates are the 2026 positions. The Man is the active Golden Spike origin;
- * the Temple is the 2026 Innovate GIS "The Temple" CPN; the camp is projected on
- * the 2026 grid (see [Camp]). All shift with the yearly city move.
+ * the Temple is the 2026 Innovate GIS "The Temple" CPN; HOME is configured per
+ * build (see [Home]). All shift with the yearly city move.
  */
 enum class NavTarget(
     val label: String,
     val location: LatLon,
 ) {
-    HOME("HOME", Camp.HOME_CAMP),
+    HOME("HOME", Home.LOCATION),
     MAN("MAN", GoldenSpike.ACTIVE),
     TEMPLE("TEMPLE", LatLon(lon = -119.201499636, lat = 40.78809942300006)),
 }

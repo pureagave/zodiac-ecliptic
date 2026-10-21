@@ -840,7 +840,7 @@ class CockpitViewModelTest {
                 assertTrue(vm.uiState.value.driveToBath)
 
                 // A valid ring sets the custom target and clears the BATH lock.
-                vm.driveToAddress(ClockTime(2, 15), "H")
+                vm.driveToAddress(ClockTime(7, 30), "E")
                 advanceUntilIdle()
                 assertEquals("7:30 & E", vm.uiState.value.customTarget?.label)
                 assertFalse(vm.uiState.value.driveToBath)
@@ -862,7 +862,7 @@ class CockpitViewModelTest {
                 val vm = driveToVm(this.backgroundScope, store)
                 advanceUntilIdle()
 
-                vm.driveToAddress(ClockTime(2, 15), "H")
+                vm.driveToAddress(ClockTime(7, 30), "E")
                 advanceUntilIdle()
                 assertNotNull(vm.uiState.value.customTarget)
 
@@ -1494,7 +1494,7 @@ class CockpitViewModelTest {
                 val vm = navShareVm(this.backgroundScope, store, navAuthority = true, publisher = publisher, preferences = prefs)
                 advanceUntilIdle()
 
-                val applied = vm.driveToAddress(ClockTime(2, 15), "H")
+                val applied = vm.driveToAddress(ClockTime(7, 30), "E")
                 advanceUntilIdle()
 
                 assertTrue("a resolvable address must apply", applied)
@@ -1560,7 +1560,7 @@ class CockpitViewModelTest {
                 val vm = navShareVm(this.backgroundScope, store, navAuthority = true, publisher = publisher, navShareFlow = navShareFlow)
                 advanceUntilIdle()
 
-                navShareFlow.value = NavShareMessage(seq = 1, src = "OTHER", payload = NavSharePayload.Address(ClockTime(2, 15), "H"))
+                navShareFlow.value = NavShareMessage(seq = 1, src = "OTHER", payload = NavSharePayload.Address(ClockTime(7, 30), "E"))
                 advanceUntilIdle()
 
                 assertEquals("7:30 & E", vm.uiState.value.customTarget?.label)
@@ -1717,7 +1717,7 @@ class CockpitViewModelTest {
                 // the virtual clock straight through the 5 s clear timer since nothing
                 // else is pending, and the flash would already be gone by the time we
                 // got to assert it.
-                navShareFlow.value = NavShareMessage(seq = 1, src = "OTHER", payload = NavSharePayload.Address(ClockTime(2, 15), "H"))
+                navShareFlow.value = NavShareMessage(seq = 1, src = "OTHER", payload = NavSharePayload.Address(ClockTime(7, 30), "E"))
                 runCurrent()
 
                 assertEquals(NavTargetFlash("ROUTING TO", "7:30 & E"), vm.uiState.value.navTargetFlash)
@@ -1966,13 +1966,13 @@ class CockpitViewModelTest {
                 val authority = navShareVm(this.backgroundScope, authorityStore, navAuthority = true, publisher = authorityPublisher)
                 advanceUntilIdle()
 
-                val followerApplied = follower.driveToAddress(ClockTime(2, 15), "H")
+                val followerApplied = follower.driveToAddress(ClockTime(7, 30), "E")
                 advanceUntilIdle()
                 assertFalse("a follower's address entry must be a genuine no-op", followerApplied)
                 assertNull(follower.uiState.value.customTarget)
                 assertTrue(followerPublisher.published.isEmpty())
 
-                val authorityApplied = authority.driveToAddress(ClockTime(2, 15), "H")
+                val authorityApplied = authority.driveToAddress(ClockTime(7, 30), "E")
                 advanceUntilIdle()
                 assertTrue("positive control: an authority's address entry applies", authorityApplied)
                 assertEquals("7:30 & E", authority.uiState.value.customTarget?.label)
