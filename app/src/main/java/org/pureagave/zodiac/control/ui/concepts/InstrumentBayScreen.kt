@@ -24,6 +24,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -284,7 +285,9 @@ private fun bayMapTile(
                 themedChip("TILT", state.mapMode == MapMode.TILT, theme) { viewModel.setMapMode(MapMode.TILT) }
             }
         }
-        Box(modifier = Modifier.fillMaxSize().padding(top = 4.dp)) {
+        // clipToBounds: a Compose Canvas does not clip, so without it the city
+        // drew straight across the neighbouring tiles and the header.
+        Box(modifier = Modifier.fillMaxSize().padding(top = 4.dp).clipToBounds()) {
             playaMapPanel(
                 inputs = mapInputs,
                 viewModel = viewModel,
