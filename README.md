@@ -7,10 +7,10 @@ straight out of 80s science fiction.*
 art car at Burning Man.** A GNSS and sensor beacon, a fleet of Android cockpit
 tablets, and a Jetson Orin thermal and visible-light perception pipeline that
 drives a tracking spotlight, all on the vehicle's own network with no cloud.
-The cockpit ran on the vehicle at Black Rock City in 2026, where a GPS bug was
-found and fixed on site. The full fleet was tested together on the vehicle
-network before the event. The perception pipeline is built and bench-validated;
-mounting it on the vehicle is next.
+At Black Rock City in 2026 the beacon, the vehicle WiFi and the hero cockpit ran
+on the vehicle, and a GPS bug was found and fixed on site. The full fleet was
+tested together on the vehicle network before the event. The perception
+pipeline is built and bench-validated; mounting it on the vehicle is next.
 
 ![RADAR cockpit: a motion-tracker scope over the live city map](docs/images/cockpit-radar.png)
 
@@ -67,10 +67,12 @@ suites read.
 
 ## Field- and fleet-tested
 
-On the playa in 2026 the hero tablet's cockpit ran on its own GNSS, and that is
-where the parked-vehicle bug below was found and fixed. Everything else here was
-exercised across the whole fleet (four tablets, the beacon, the edge box) on the
-vehicle's network before the event:
+On the playa in 2026 the beacon broadcast over the vehicle's WiFi and the hero
+tablet navigated the city; that is where the parked-vehicle bug below was found
+and fixed. Without the edge box and the other tablets the beacon added little, so
+the hero was switched to its own GNSS and navigated on that. Everything else
+here was exercised across the whole fleet (four tablets, the beacon, the edge
+box) on the vehicle's network before the event:
 
 - **GNSS failover that can't flap.** The tablets take position from the beacon
   over multicast and fall back to their own GNSS. The thresholds are
@@ -153,7 +155,7 @@ a simulated GPS track, so its contacts are not real people.*
 
 | | Status |
 |---|---|
-| Cockpit on the hero tablet: live map, navigation, own-GNSS position | **Ran on the vehicle at Black Rock City 2026** |
+| Hero cockpit (live map, navigation), beacon, vehicle WiFi | **Ran on the vehicle at Black Rock City 2026** |
 | Whole fleet: four tablets, beacon sensor channels, shared destination, GNSS failover | **Tested together on the vehicle network** before the event |
 | Perception pipeline, DMX tracking light, Stream Deck | **Built and bench-validated**; not yet run on the vehicle |
 | Trained detector | **Designed, not built** (classical CV today) |

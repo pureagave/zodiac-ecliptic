@@ -8,8 +8,8 @@ a confident bench result disagreed with the hardware, the hardware won.
 
 ## 1. The GPS filter that starved a parked vehicle (found at Black Rock City)
 
-**Symptom.** On the playa, the hero tablet running on its own GNSS showed `NO FIX`
-and flipped between sources all day. The log showed 59 round trips:
+**Symptom.** On the playa, the hero tablet (taking position from the beacon, with
+its own GNSS as fallback) showed `NO FIX` and flipped between sources all day. The log showed 59 round trips:
 `NET -> SYSTEM failover`, then `back on NET` while NET was *still* searching.
 The tablet was bouncing between two sources that both looked dead.
 
