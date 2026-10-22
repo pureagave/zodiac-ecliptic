@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Pre-flight for flashing the Jetson Orin Nano. Run this on the flash host
-# (flashhost) BEFORE putting the board in recovery mode.
+# (the flash host) BEFORE putting the board in recovery mode.
 #
 # Everything here is read-only. The point is to fail in a warm room with the
 # board still in its box, rather than after the jumper dance — the flash writes

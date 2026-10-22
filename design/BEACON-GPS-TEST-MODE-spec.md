@@ -95,10 +95,10 @@ No Android imports. Everything deterministic, clock injected.
 ```kotlin
 /** BRC presets, coordinates restated from :app (the modules share no code —
  *  FLEET-1 decision 10). Sources cited per value; re-check when the city moves:
- *  app/.../core/geo/GoldenSpike.kt (Y2026), core/ops/Camp.kt, core/ops/NavTarget.kt. */
+ *  app/.../core/geo/GoldenSpike.kt (Y2026), core/ops/NavTarget.kt; HOME from BuildConfig. */
 internal enum class SimPreset(val lat: Double, val lon: Double) {
     MAN(40.783247448000054, -119.20788409599999),     // GoldenSpike.Y2026
-    HOME(40.7832474, -119.2225761),                   // Camp.HOME_CAMP (7:30 & E)
+    HOME(BuildConfig.HOME_LAT, BuildConfig.HOME_LON), // the root-build HOME (see :app Home)
     TEMPLE(40.78809942300006, -119.201499636),        // NavTarget.TEMPLE 2026
 }
 
@@ -546,7 +546,7 @@ Push after each phase commit per the workflow.
    manifest receiver + custom signature permission — rejected because shell
    doesn't hold app signature permissions and manifest receivers force `-n
    component` into every command. **Default: as specced.**
-2. **Preset list** — `MAN`, `HOME` (Camp Nebula, 7:30 & E), `TEMPLE`,
+2. **Preset list** — `MAN`, `HOME` (the configured home camp), `TEMPLE`,
    coordinates restated from `:app` (the modules share no code). Want more —
    e.g. a gate-road point or deep-playa 90°? Cheap to add to the enum.
    **Default: the three.**
@@ -575,5 +575,5 @@ Push after each phase commit per the workflow.
 | Preset | lat | lon | Source (`:app`) |
 |---|---|---|---|
 | `MAN` | 40.783247448000054 | −119.20788409599999 | `core/geo/GoldenSpike.kt:19` (Y2026, = ACTIVE) |
-| `HOME` | 40.7832474 | −119.1908380 | `core/ops/Camp.kt:23` (Camp Nebula, 7:30 & E — geometric estimate; swap when the BM API geocode lands) |
+| `HOME` | from `BuildConfig` | from `BuildConfig` | the root build's `zodiac.home.*` (`local.properties`), else the neutral 7:30 & E — superseded the original hard-coded camp, 2026-10-21 |
 | `TEMPLE` | 40.78809942300006 | −119.201499636 | `core/ops/NavTarget.kt:21` (2026 GIS CPN) |

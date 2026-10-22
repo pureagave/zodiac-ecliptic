@@ -20,7 +20,7 @@
 <aside class="rail" id="rail">
   <div class="rail-head">
     <a class="rail-mark" href="../index.html"><b>ZODIAC</b> <span>docs</span></a>
-    <p class="rail-sub">retro-futuristic mutant vehicle · Camp Nebula · Black Rock City</p>
+    <p class="rail-sub">Retro-futuristic rover art car · ECLIPTIC · Black Rock City</p>
   </div>
   <nav aria-label="Documentation sections">
 <div class="rail-group">
@@ -177,7 +177,7 @@ releases the 2026 data, roughly three weeks pre-event.</p>
 <table>
 <thead><tr><th>Target</th><th>Resolves to</th></tr></thead>
 <tbody>
-<tr><th>HOME</th><td>Camp <code>HOME_CAMP</code>, &ldquo;7:30 &amp; E&rdquo;</td></tr>
+<tr><th>HOME</th><td>The home camp, <code>Home.LOCATION</code> &mdash; set per build from <code>local.properties</code>, else the neutral 7:30 &amp; E</td></tr>
 <tr><th>MAN</th><td>The active Golden Spike</td></tr>
 <tr><th>TEMPLE</th><td>The 2026 GIS CPN</td></tr>
 <tr><th>BATH</th><td>Nearest toilet, resolved dynamically and re-resolved live</td></tr>
@@ -189,16 +189,16 @@ releases the 2026 data, roughly three weeks pre-event.</p>
 <p><code>NavTarget</code> itself has exactly three entries; BATH and ADDR are derived.</p>
 
 <div class="note caveat">
-  <span class="label">Unverified &mdash; the camp coordinate is an estimate</span>
-  <p><code>Camp.HOME_CAMP</code> is a <strong>geometric projection</strong> of &ldquo;Heiau
-  &amp; 2:15&rdquo; onto the 2026 grid, not a geocode. The authoritative placement comes from the BM
-  API the Sunday before gates.</p>
+  <span class="label">Configuration &mdash; HOME is whatever the build was given</span>
+  <p>A configured HOME is usually a <strong>geometric projection</strong> of the camp's address onto
+  the year's grid, not a geocode. The authoritative placement comes from the BM API the Sunday
+  before gates. The tests only hold it to being inside the city.</p>
 </div>
 
 <div class="note caveat">
   <span class="label">Outstanding &mdash; on-device address check</span>
-  <p>Typing <code>7:30 &amp; E</code> on the S9+ gives <code>HEADING 112&deg;, 1.6&nbsp;km</code>,
-  identical to the HOME preset, which was verified 2026-08-08. The broader 2026 base-map check
+  <p>A typed address on the S9+ gave the same heading and distance as the HOME preset for the
+  same corner, verified 2026-08-08. The broader 2026 base-map check
   &mdash; typing a range of known addresses and confirming each lands on the right corner &mdash;
   remains outstanding, because the city has moved.</p>
 </div>

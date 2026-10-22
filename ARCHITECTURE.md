@@ -342,12 +342,13 @@ still puts the 12:00 axis at 45.0° true, verified against the shipped GIS (the
   `BundledGisTest` against the assets — which is how a nine-metre error in the
   old Esplanade value was found.
 
-**Drive-to targets.** `NavTarget` has exactly three entries — HOME (camp
-`HOME_CAMP`, "7:30 & E"), MAN (the active Golden Spike), TEMPLE (the 2026
-GIS CPN). BATH is resolved dynamically to the nearest toilet, and ADDR is built
-from a typed clock + ring letter. The camp coordinate is a **geometric estimate**
-on the 2026 grid, not a geocode — the real one comes from the BM API the Sunday
-before gates.
+**Drive-to targets.** `NavTarget` has exactly three entries — HOME (the home
+camp, `Home.LOCATION`), MAN (the active Golden Spike), TEMPLE (the 2026 GIS CPN).
+BATH is resolved dynamically to the nearest toilet, and ADDR is built from a
+typed clock + ring letter. HOME is **build configuration, not source**: the root
+build reads `zodiac.home.lat/lon` from the gitignored `local.properties` into
+both modules' `BuildConfig`, falling back to a neutral default (7:30 & E on the
+2026 grid) and failing the build on a half-set or off-playa value.
 
 ### 4.9 Rendering
 
@@ -773,9 +774,10 @@ nothing like the observation. The deployed rig already passed `fovref=d`
 explicitly, so the vehicle never carried the error; the risk was the *next*
 camera added without the flag.
 
-**Camp coordinate is estimated, not geocoded.** `Camp.HOME_CAMP` is a
-geometric projection of "7:30 & E" onto the 2026 grid. The authoritative
-placement comes from the BM API shortly before the event.
+**HOME is whatever the build was given.** A configured HOME is usually a
+geometric projection of the camp's address onto the year's grid; the
+authoritative placement comes from the BM API shortly before the event.
+`NavTargetTest` only checks that it is inside the city.
 
 **2026 base map has not been checked on-device.** The city has moved; typing a
 known address and confirming it lands on the right corner is outstanding.

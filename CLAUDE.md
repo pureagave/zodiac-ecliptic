@@ -4,8 +4,8 @@ Guidance for Claude Code (claude.ai/code) when working in this repository.
 
 ## Project
 
-**Zodiac** — software for a retro-futuristic mutant vehicle (art car) run by
-the Camp Nebula camp at Burning Man. Three parts, one system:
+**Zodiac** — software for a retro-futuristic rover art car (a mutant vehicle at
+Burning Man). Its onboard system is called **ECLIPTIC**. Three parts, one system:
 
 - **`:app`** — the Android tablet cockpit (`org.pureagave.zodiac.control`). Kotlin
   + Jetpack Compose. Three runtime-switchable "concepts" — `RADAR`, `MAP`,

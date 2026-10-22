@@ -128,7 +128,7 @@ presentational — all three read the same state.
 - Zoom-gated labels: plazas at 0.20 px/m, major art 0.30, streets 0.45, CPNs 0.65,
   minor art 1.10. Street labels are de-duplicated across the GIS's per-segment
   features so each logical street draws once.
-- **Drive-to**: HOME (camp at 7:30 & E), MAN, TEMPLE, BATH (nearest toilet,
+- **Drive-to**: HOME (the home camp, set per build), MAN, TEMPLE, BATH (nearest toilet,
   re-resolved live), or ADDR — type any city address on a full-screen keypad
   (clock time → ring letter → a 10 s heading flash → live nav).
 - **Street-following routing**: out to the nearest entrance radial, in to

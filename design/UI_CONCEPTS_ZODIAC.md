@@ -24,8 +24,6 @@
 - **Package:** `org.pureagave.zodiac.control`
 - **Application ID (proposal):** `org.pureagave.zodiac.control`
 
-(If you want your namespace instead, we can switch to `com.rob.zodiaccontrol`.)
-
 ---
 
 ## Device Baseline (Amazon Fire tablets, ~last 3 years)
@@ -107,7 +105,7 @@ Proposed baseline for V1:
 
 ---
 
-## Vehicle Reference Capture Plan (Judge Dredd Rover Taxi)
+## Vehicle Reference Capture Plan (the rover taxi)
 
 1. Gather high-quality front/side/rear images from public references.
 2. Build a simplified line-art profile set in SVG.

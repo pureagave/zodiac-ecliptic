@@ -63,7 +63,7 @@ are Ubuntu 20.04/22.04 — our flash host runs 26.04. We use the Jetson Linux
 BSP's own CLI flasher instead, which SDK Manager only wraps: no GUI, no NVIDIA
 login, headless, and it's the documented path for external NVMe.
 
-**Flash host: `flashhost`** (`ssh flashhost`, Tailscale) — x86 Ubuntu 26.04. The Mac cannot
+**Flash host:** a dedicated x86 Ubuntu 26.04 box (called `flashhost` below), reached over SSH. The Mac cannot
 do this; Tegra recovery is a USB protocol and needs an x86 Linux host.
 Staged at `~/jetson/Linux_for_Tegra` (L4T 39.2, `apply_binaries.sh` already run).
 
@@ -567,8 +567,8 @@ python3 -m zvision --check --min-area 0.008 \
   --camera rgb:/dev/video6:az=180:fov=87:lens=pinhole:name=aft
 ```
 
-> **Re-flashing on playa is possible** — `flashhost` travels as the camp's audio
-> player, so the full BSP toolchain is on-site. Keep `~/jetson/Linux_for_Tegra`
+> **Re-flashing on playa is possible** — the flash host travels with the
+> vehicle (it doubles as a camp server), so the full BSP toolchain is on-site. Keep `~/jetson/Linux_for_Tegra`
 > on it. That makes the OS layer recoverable, not one-shot.
 
 ### If `flashhost` itself is down

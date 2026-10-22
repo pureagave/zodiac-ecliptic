@@ -20,7 +20,7 @@ scrambling the per-camera `by-path` identities the rig depends on.
 > ring attached, that is false.**
 >
 > - `3550000.usb` (tegra-xudc) is the **device-only** controller — it exists only
->   in gadget/flash mode (it's what presented `192.168.55.1` to flashhost). It plays
+>   in gadget/flash mode (it's what presented `192.168.55.1` to the flash host). It plays
 >   **no part in host mode.**
 > - When the Type-C role switch is flipped to **host**, the port is served by
 >   **`3610000.usb` — the *same* xHCI host controller as the four Type-A ports.**
@@ -76,7 +76,7 @@ a device uses does **not** change its bandwidth budget.
   `3550000.usb` (tegra-xudc) and presents the `192.168.55.1` flash gadget. In
   **host** mode (role switch `usb2-0-role-switch = host`) it is served by
   **`3610000.usb` — the same host controller as Type-A** — and appears as another
-  root-hub port on Bus 001. It is **not** an independent budget. Freed from flashhost
+  root-hub port on Bus 001. It is **not** an independent budget. Freed from the flash host
   2026-08-11; role verified to survive a reboot 2026-08-13.
 - **The onboard Type-A hub is FULL:** optical (port 1), FTDI/DMX (port 2),
   PureThermal (port 3), Stream Deck (port 4). The USB-C is the only free
@@ -232,8 +232,8 @@ the measured table above — **not** 720p on all four.
       covers the forward 160°; RGB owns the sides/rear).
 - [ ] Calibrate each camera's `az` once mounted.
 - [ ] Note: once the USB-C carries cameras it is **no longer the flash/recovery
-      path** — reconnect to flashhost and switch back to device mode to reflash L4T.
-      (Confirmed 2026-08-13: in host mode the `192.168.55.1` gadget to flashhost is gone.)
+      path** — reconnect to the flash host and switch back to device mode to reflash L4T.
+      (Confirmed 2026-08-13: in host mode the `192.168.55.1` gadget to the flash host is gone.)
 
 ## Measured vs datasheet — explicit
 
