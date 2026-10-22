@@ -3,6 +3,8 @@ package org.pureagave.zodiac.control.data.discovery
 import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.assertTrue
+import org.junit.Assume.assumeTrue
+import org.junit.Before
 import org.junit.Test
 import org.pureagave.zodiac.control.core.geo.GoldenSpike
 import org.pureagave.zodiac.control.core.ops.StreetRingRadiiM
@@ -25,10 +27,26 @@ import kotlin.math.hypot
  *
  * Mirrors [org.pureagave.zodiac.control.data.playa.BundledGisTest]'s discipline of
  * testing the bytes we actually ship, not a re-derivation of them.
+ *
+ * **The public export does not ship the seed** (Burning Man API data is not
+ * redistributed). It ships [ABSENT_MARKER] in its place, and only then do these
+ * tests skip. A seed that is missing *without* the marker still fails — so a
+ * dev checkout that loses the file can't go quietly green.
  */
 class DiscoverySeedAssetTest {
+    @Before
+    fun seedIsShippedOrDeliberatelyAbsent() {
+        val seed = assetFile(SEED)
+        if (seed == null) {
+            check(assetFile(ABSENT_MARKER) != null) {
+                "bundled discovery seed not found for ${GoldenSpike.ACTIVE_YEAR}, and no $ABSENT_MARKER says why"
+            }
+        }
+        assumeTrue("discovery seed deliberately not shipped in this tree ($ABSENT_MARKER)", seed != null)
+    }
+
     private val records: List<JSONObject> by lazy {
-        val arr = JSONArray(seedFile().readText())
+        val arr = JSONArray(checkNotNull(assetFile(SEED)).readText())
         (0 until arr.length()).map { arr.getJSONObject(it) }
     }
 
@@ -82,20 +100,23 @@ class DiscoverySeedAssetTest {
         const val RING_TOLERANCE_M = 1.0
         const val MAX_RADIUS_M = 5_000.0
 
+        const val SEED = "discovery_seed.json"
+        const val ABSENT_MARKER = "discovery_seed.ABSENT.md"
+
         /**
          * Unit tests run with the module dir as CWD under AGP, but don't rely on
          * it — walk up until the shipped assets tree appears, as BundledGisTest does.
          */
-        fun seedFile(): File {
+        fun assetFile(name: String): File? {
             var dir: File? = File("").absoluteFile
             while (dir != null) {
-                val candidate = File(dir, "app/src/main/assets/brc/${GoldenSpike.ACTIVE_YEAR}/discovery_seed.json")
+                val candidate = File(dir, "app/src/main/assets/brc/${GoldenSpike.ACTIVE_YEAR}/$name")
                 if (candidate.isFile) return candidate
-                val here = File(dir, "src/main/assets/brc/${GoldenSpike.ACTIVE_YEAR}/discovery_seed.json")
+                val here = File(dir, "src/main/assets/brc/${GoldenSpike.ACTIVE_YEAR}/$name")
                 if (here.isFile) return here
                 dir = dir.parentFile
             }
-            error("bundled discovery seed not found for ${GoldenSpike.ACTIVE_YEAR}")
+            return null
         }
     }
 }
