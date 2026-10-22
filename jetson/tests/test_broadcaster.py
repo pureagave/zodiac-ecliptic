@@ -153,29 +153,29 @@ class AutoBroadcastRefreshTest(unittest.TestCase):
 
     def test_frozen_loopback_broadcast_reresolves_when_network_appears(self):
         # Construction sees no network (loopback); the next probe sees the lease.
-        self._seq("127.0.0.1", "<jetson-ip>")
+        self._seq("127.0.0.1", "10.20.30.40")
         tx = ThreatBroadcaster(group="127.0.0.1", port=9)
         tx.sock.close()
         tx.sock = _NullSock()
         try:
             self.assertEqual(("127.0.0.255", 9), tx.targets[1])  # frozen pre-DHCP
             tx.send(format_frame([]))  # lease is up -> re-derive
-            self.assertEqual(("192.168.86.255", 9), tx.targets[1])
+            self.assertEqual(("10.20.30.255", 9), tx.targets[1])
         finally:
             tx.close()
 
     def test_resolved_broadcast_freezes_and_stops_probing(self):
         # Only two addresses available; a third probe would raise StopIteration,
         # so this fails loudly if the loopback guard is removed (probe-every-send).
-        self._seq("127.0.0.1", "<jetson-ip>")
+        self._seq("127.0.0.1", "10.20.30.40")
         tx = ThreatBroadcaster(group="127.0.0.1", port=9)
         tx.sock.close()
         tx.sock = _NullSock()
         try:
             tx.send(format_frame([]))  # resolves (2nd probe)
-            self.assertEqual(("192.168.86.255", 9), tx.targets[1])
+            self.assertEqual(("10.20.30.255", 9), tx.targets[1])
             tx.send(format_frame([]))  # must NOT probe again
-            self.assertEqual(("192.168.86.255", 9), tx.targets[1])
+            self.assertEqual(("10.20.30.255", 9), tx.targets[1])
         finally:
             tx.close()
 
@@ -185,7 +185,7 @@ class AutoBroadcastRefreshTest(unittest.TestCase):
 
         def resolver(*a, **k):
             probes.append(1)
-            return "<jetson-ip>"
+            return "10.20.30.40"
 
         broadcaster.local_ip = resolver
         tx = ThreatBroadcaster(group="127.0.0.1", port=9, broadcast="10.9.9.255")

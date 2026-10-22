@@ -1,378 +1,219 @@
 # Zodiac
 
-Software for **Zodiac**, a retro-futuristic mutant vehicle (art car) run by the
-Camp Nebula camp at Burning Man. It is one system in three parts: a fleet of
-Android tablets showing an 80s green-phosphor cockpit over a live Black Rock City
-map, a phone that acts as the vehicle's shared sensor hub, and a roof-mounted
-vision box that watches for people in the dark and tells every screen — and a
-spotlight — where they are.
+*A retro-futuristic rover, a city that exists for one week a year, and a cockpit
+straight out of 80s science fiction.*
 
-Everything realtime runs on the vehicle's own WiFi. Starlink is aboard but is
-treated as unreliable; nothing safety-relevant depends on it.
+**ECLIPTIC is a distributed sensing, perception and actuation system for a moving
+art car at Burning Man.** A GNSS and sensor beacon, a fleet of Android cockpit
+tablets, and a Jetson Orin thermal and visible-light perception pipeline that
+drives a tracking spotlight, all on the vehicle's own network with no cloud.
+The cockpit ran on the vehicle at Black Rock City in 2026, where a GPS bug was
+found and fixed on site. The full fleet was tested together on the vehicle
+network before the event. The perception pipeline is built and bench-validated;
+mounting it on the vehicle is next.
 
-> **Docs map** — this file is the public snapshot: what exists, what runs where,
-> what is honestly not built. For the engineering map of all three codebases see
-> [`ARCHITECTURE.md`](ARCHITECTURE.md). For build/test/deploy see
-> [`docs/BUILD.md`](docs/BUILD.md). For the wire formats between the parts see
-> [`docs/PROTOCOLS.md`](docs/PROTOCOLS.md). For the dated decision log see
-> [`SYNC.md`](SYNC.md) — that is where progress is recorded, not here.
+![RADAR cockpit: a motion-tracker scope over the live city map](docs/images/cockpit-radar.png)
 
----
+## Why it exists
 
-## The three parts
+Black Rock City is a temporary city of about 70,000 people, built on a dry lake
+bed in northern Nevada and gone a few weeks later. Navigation there has an
+unusual set of problems:
 
-| Part | Language | Runs on | What it does |
-|---|---|---|---|
-| **`:app`** — Zodiac Control | Kotlin / Jetpack Compose | Android tablets & phones | The cockpit. Three runtime-switchable "concepts" (RADAR / MAP / DRIVER), a live BRC playa map, street-following navigation, threat HUD, passenger display, OLED burn-in mitigation. |
-| **`:beacon`** — Zodiac Beacon | Kotlin, headless | one Android phone | The vehicle's sensor hub. Reads GNSS, compass, IMU, mic level, ambient light, shock and battery, and broadcasts them as NMEA over UDP multicast to the whole fleet. |
-| **`jetson/`** — `zvision` + `zdeck` | Python 3 | Jetson Orin Nano Super | The edge box. A ring of cameras → one full-circle threat list on the fleet bus, plus a DMX moving-head tracker light and a six-key Stream Deck control surface. |
+- **No reliable connectivity.** Cell and internet coverage can't be counted on,
+  so everything realtime runs on the vehicle's own WiFi and every map, street
+  and route is on-device.
+- **Addresses are clock positions.** Streets are concentric rings and radial
+  "clock" streets around a centre point, and the city moves every year.
+- **Dust and heat.** Alkaline dust gets into everything, and days run past 40 °C.
+- **Dark nights full of people.** Pedestrians and bikes, many unlit, around a
+  slow, heavy vehicle with limited sightlines.
 
-They share no code. They agree through three documented wire formats — NMEA
-sentences (beacon → fleet), `ZTHREAT` frames (Jetson → fleet), and `$ZNAV`
-nav-share (tablet ↔ tablet) — all pinned by tests, see
-[`docs/PROTOCOLS.md`](docs/PROTOCOLS.md).
+Zodiac itself began life as a picture car (a city taxi) from the 1995 film
+*Judge Dredd*. It has since been repainted bright green and stripped of the
+film's markings. The design language, for the vehicle and every screen, comes
+from the 80s science fiction I grew up with: *Aliens*, *Star Trek*, *Blade
+Runner*.
 
-```
-                     vehicle WiFi (travel router, single /24, DHCP)
-  ┌──────────────┐                                          ┌──────────────────┐
-  │  :beacon     │ ── NMEA ──▶ 239.7.7.10:10110 ──┐         │  jetson zvision  │
-  │  phone       │    + subnet broadcast          │         │  Orin Nano Super │
-  │  sensor hub  │                                │         └────────┬─────────┘
-  └──────────────┘                                │                  │
-                                                  ▼                  │ ZTHREAT
-                                        ┌─────────────────┐          ▼
-                                        │  :app tablets   │◀── 239.7.7.20:10120
-                                        │  (8–10 of them) │    + subnet broadcast
-                                        └───────┬─────────┘
-                                                │ $ZNAV 239.7.7.30:10130       │ DMX (via olad)
-                                                └─▶ shared drive-to target     ▼
-                                                    (tablet ↔ tablet)  moving-head tracker light
-```
+## What's in the box
 
-The tablets also share one piece of state among *themselves* — the drive-to
-destination — over a third bus, `$ZNAV` (239.7.7.30:10130). A fourth,
-`$ZVER` (239.7.7.40:10140), is being added for fleet build-version reporting.
-
----
-
-## Repository layout
-
-```
-app/            :app      — the Android cockpit (org.pureagave.zodiac.control)
-beacon/         :beacon   — the headless sensor hub (org.pureagave.zodiac.beacon)
-jetson/         zvision + zdeck — the Python edge box, and its own docs
-protocol/       cross-language wire contracts (the ZTHREAT golden corpus)
-docs/           build, protocols, devices, kiosk provisioning, audits
-design/         UI concept docs and design history
-tasks/          open.md (active work) / done.md
-tools/          offline asset pipelines (art pre-render)
-SYNC.md         append-only decision log — the project's working memory
+```mermaid
+flowchart LR
+  subgraph Jetson["Jetson Orin Nano Super — zvision"]
+    T[FLIR Lepton thermal] --> Z[detect → fuse by bearing → contacts]
+    R[IMX462 low-light RGB] --> Z
+  end
+  B["Beacon phone<br/>GNSS · compass · IMU · light · shock · odometer"]
+  F["Tablet fleet<br/>cockpit · driver HUD · passenger display"]
+  L[DMX moving-head spotlight]
+  D[Stream Deck control surface]
+  Z -- "ZTHREAT · UDP multicast · 10 Hz" --> F
+  Z -- DMX --> L
+  D -- DMX --> L
+  B -- "NMEA + $Z sensor channels · multicast" --> F
+  F <-- "$ZNAV shared destination" --> F
 ```
 
-A handful of root-level files (`AGENTS.md`, `SOUL.md`, `IDENTITY.md`,
-`BOOTSTRAP.md`, `HEARTBEAT.md`, `TOOLS.md`, `USER.md`, `NEXT.md`) are
-**AI-assistant workspace/persona files, not product documentation** — safe to
-ignore when reading the codebase.
-
----
-
-## What runs where
-
-Full detail, including why each role is on the hardware it is on, in
-[`docs/DEVICES.md`](docs/DEVICES.md).
-
-| Role | Device | Runs | Status |
-|---|---|---|---|
-| Hero dashboard | Galaxy Tab S9+ (`SM-X810`), 12.4" OLED | `:app`, RADAR or MAP | In use |
-| Driver night display | Galaxy A54 (`SM-A546V`), OLED | `:app`, DRIVER concept | HUD built; on-vehicle night legibility check outstanding |
-| Passenger / crew displays | Fire HD 10 (`KFTUWI`) and other tablets, LCD | `:app`, passenger carousel or RADAR/MAP | In use; the Fire is the performance floor |
-| Sensor hub | XCover Pro (`SM-G715U`), screen off | `:beacon` | Built, GPS + compass verified end-to-end |
-| Vision edge box | Jetson Orin Nano Super | `zvision` | Software built and tested; thermal + RGB cameras now connected and streaming on the box; permanent ring, on-vehicle mount/aim and a trained detector still to come |
-| Light control surface | Elgato Stream Deck Mini (`0fd9:0063`) | `zdeck` | Built and driven on the real deck |
-| Tracker light | DMX moving head + FTDI USB-DMX | driven by `zvision` / `zdeck` via `olad` | Fixture characterised on the bench; on-vehicle aim calibration outstanding |
-| Network | travel router (AP + DHCP) | — | In use |
-
----
-
-## `:app` — the cockpit
-
-Package `org.pureagave.zodiac.control`. Kotlin + Compose, minSdk 28,
-targetSdk/compileSdk 35, `screenOrientation="fullUser"` (each concept reflows for
-landscape or portrait).
-
-### Three concepts
-
-Picked with the top-right pill, persisted across launches. Switching is purely
-presentational — all three read the same state.
-
-- **RADAR** (`MotionTrackerScreen`) — the *Aliens* M41A motion tracker. A circular
-  scope whose sweep arm (one revolution every 4 s) lights up the real BRC map as
-  it passes, with art and camp contacts pulsing behind it.
-- **MAP** (`InstrumentBayScreen`) — the *Alien* Nostromo instrument bay. Bordered
-  tiles: heading dial, speed gauge, ground-track map, cell and throttle gauges.
-- **DRIVER** (`DriverNightScreen`) — a mostly-black OLED night HUD for the driver's
-  phone. Thermal contacts as hollow wireframe figures in a forward perspective
-  view, plus a nose-up surround ring carrying every contact all the way around
-  the vehicle, plus minimal nav.
-
-### What is built
-
-**Map and navigation**
-- Black Rock City rendered from the bundled 2026 Innovate GIS — trash fence,
-  streets, plazas, city blocks, toilets, CPNs. Active year is one source of truth
-  (`GoldenSpike.ACTIVE = Y2026`). The 2026 city moved ~583 m SW from 2025 but did
-  not rotate, so the 12:00 axis is still 45° true.
-- Two map modes: `TOP` (orthographic, ego centred) and `TILT` (pitched 3D over a
-  retro perspective grid). Drag to pan, pinch to zoom, two-finger twist to rotate.
-  Heading and speed come from the GPS fix, never from tapping the map.
-- Zoom-gated labels: plazas at 0.20 px/m, major art 0.30, streets 0.45, CPNs 0.65,
-  minor art 1.10. Street labels are de-duplicated across the GIS's per-segment
-  features so each logical street draws once.
-- **Drive-to**: HOME (the home camp, set per build), MAN, TEMPLE, BATH (nearest toilet,
-  re-resolved live), or ADDR — type any city address on a full-screen keypad
-  (clock time → ring letter → a 10 s heading flash → live nav).
-- **Street-following routing**: out to the nearest entrance radial, in to
-  Esplanade, round the ring, to the address — with every corner snapped to a real
-  vertex of the GIS street polylines, so the drawn route lies on the drawn
-  streets instead of cutting through camps.
-- Street-crossing popups ("ENTERING ATWOOD") and "passing" callouts for notable
-  art within 120 m.
-- A heading-guidance chevron that slides along a track to show how far off the
-  target is and which way to turn.
-- **Shared destination across the fleet.** When one tablet sets a drive-to
-  target, every tablet adopts it over `$ZNAV` (239.7.7.30:10130), so the whole
-  fleet's DRIVER HUD points the same way. The OLED tablets (S9+, A54) are
-  automatic broadcast authorities and the two Fires follow — authority is *not* a
-  toggle, it is the same OLED-device check burn-in uses. Lamport `(seq, src)`
-  ordering, single-owner, no-echo (`NavShareArbiter`); adoption reuses the same
-  local drive-to path, so no new HUD was needed.
-
-**Sensing**
-- Five pluggable GPS sources behind one interface — `FAKE`, `SYSTEM`, `BLE`
-  (Bluetooth Classic SPP receivers), `USB` (serial NMEA dongles), `NET`. `NET` is
-  the shipped fleet path and is verified end-to-end against the real beacon.
-- Automatic `NET → SYSTEM` failover on a device that has its own GNSS: drop after
-  3 s of an unhealthy primary (on top of a 5 s staleness window), recover only
-  after 10 s of health, so a half-alive beacon cannot flap the source.
-- `NET` also parses the beacon's five proprietary sensor channels and surfaces
-  them in the UI; `$ZENV` ambient lux drives automatic screen dimming.
-- Threat contacts from the Jetson over `ZTHREAT`, with an explicit feed state —
-  `LIVE` / `DEMO` / `ABSENT`. On a deployed vehicle the demo source is **off**, so
-  a dead feed reads "NO VISION" rather than inventing pedestrians.
-
-**Displays and operations**
-- **Passenger display**: a self-running card carousel for riders — playa address,
-  an **interactive track-up live map** (pan/zoom, auto-follows the vehicle), a
-  mic-driven oscilloscope, thermal contacts around the vehicle, an impact
-  "bump" gauge, trip odometer, sunrise/sunset countdown, nearest art, a live
-  telemetry feed off the fleet bus. A card with
-  no data is dropped from the rotation rather than shown empty, and the "souls
-  detected" card only appears on a genuinely live vision feed. The **passenger
-  Fires default to this automatically** (by hardware — non-OLED = passenger),
-  leaving the Samsung hero + driver on the full cockpit; the hidden top-right
-  long-press is an override. To keep the map and other steady cards from being
-  starved by frequent art/street-crossing interrupts near the city, interrupts
-  are capped and the steady rotation is guaranteed regular airtime.
-- **OLED burn-in mitigation**: whole-UI pixel shift (universal), a brightness
-  breathe and idle dim (OLED only — gated off on Amazon devices), and an idle
-  escalation ACTIVE → DIM (5 min) → DEEP_IDLE "STANDBY" screen (30 min) → app-drawn
-  black sleep (60 min), waking instantly on touch, real GPS movement or a link
-  change. Every parameter is adjustable on the playa from a hidden tuning panel
-  and persists.
-- **Kiosk mode**: device-owner lock task, lockscreen and automatic OS updates
-  disabled, and — because Android blocks a boot receiver from launching an
-  activity — the cockpit is set as the device's Home app so a kiosked tablet
-  **relaunches itself after a reboot or power loss** instead of sitting on the
-  stock launcher. See [`docs/KIOSK.md`](docs/KIOSK.md).
-- **On-device postmortem logging**: every build writes a size-capped rotating log
-  (512 KiB × 5 segments ≈ 2.5 MB). It counts everything it discards — write
-  failures, rotation failures, and lines aged out of the ring — so it can never
-  lie about its own completeness. A hidden bottom-right long-press opens a log
-  viewer on the device itself, which on the Fire is the only way in, because
-  Fire OS denies `adb pull` access to `/sdcard/Android/data`.
-- **Playa discovery**: offline-first cache of the Burning Man API's art and camp
-  records, stored in `filesDir` (not `cacheDir` — Android may purge that, and this
-  is the only copy for up to 14 unattended days). Refreshes daily when there is
-  internet; a failed or partial fetch never clobbers a good cache. Art
-  placements are embargoed by BM until roughly three weeks pre-event, so no art
-  markers show until they release the 2026 data.
-- **Pre-rendered art imagery**: `tools/prerender_art.py` bakes BM art thumbnails
-  into the APK in the cockpit's phosphor treatment. Baked rather than styled at
-  runtime because `RuntimeShader` is API 33+ while the passenger Fires are API 28,
-  and the playa has no reliable internet.
-
-### What is *not* built
-
-- **Every vehicle transport is fake.** `FakeTransportAdapter` is the only
-  implementation of `TransportAdapter` in the repository, and
-  `FakeTelemetryRepository` the only production `TelemetryRepository`. The
-  transport chips, CONNECT/DISCONNECT buttons, `SetHeading`/`SetSpeed` commands and
-  the thermal/mode/link readouts they feed are scaffolding for a vehicle bus that
-  does not exist yet. Real vehicle data reaches the app **only** through
-  `NetworkLocationSource` (NMEA) and `NetworkThreatSource` (ZTHREAT).
-- Two MAP tiles render hard-coded literals: the cell gauges (`CELL A 70%`,
-  `CELL B 45%`) and the throttle trace. They are not wired to anything.
-- `CockpitUiState.tiltDeg` is persisted and clamped but the renderer applies a
-  compile-time 45° instead — a runtime `rotationX` would not render in that
-  `graphicsLayer` on the S9+.
-- No automated coverage of the map touch interaction (drag / pinch / twist).
-
----
-
-## `:beacon` — the sensor hub
-
-Package `org.pureagave.zodiac.beacon`. A headless foreground-service app that
-turns a spare Android phone into the vehicle's shared sensor. minSdk 29 (the
-XCover Pro is Android 10).
-
-It forwards the phone's raw GNSS NMEA **verbatim** and adds:
-
-| Sentence | Carries | Rate |
+| Part | Stack | What it does |
 |---|---|---|
-| `$GPHDT` | true compass heading (magnetometer, declination-corrected once a fix exists) | ~4 Hz |
-| `$ZTLM` | IMU pitch/roll + ground speed | ~4 Hz |
-| `$ZAUD` | mic level — rms, peak, beat flag | ~15 Hz |
-| `$ZENV` | ambient lux | ~0.5 Hz |
-| `$ZSHK` | shock/impact peak g | on impact |
-| `$ZBCN` | health — battery %, fix quality, satellites, uptime | ~0.2 Hz |
-| `$ZODO` | trip + lifetime odometer (persisted) | ~0.5 Hz |
+| [`:app`](app/), the cockpit | Kotlin, Jetpack Compose | Runs on 4 tablets. Three switchable cockpits (RADAR, MAP, DRIVER) over a live city map with street-following navigation, a passenger display, kiosk mode and OLED burn-in protection |
+| [`:beacon`](beacon/), the sensor hub | Kotlin, headless Android | A rugged phone as the vehicle's shared sensor. Broadcasts GNSS, heading, light, shock and odometer as NMEA; for audio, only a level and a beat flag ever leave the phone |
+| [`jetson/`](jetson/) zvision + zdeck | Python, OpenCV, Jetson Orin Nano Super | Thermal and visible perception, the DMX tracking light, and a six-key Stream Deck control panel |
 
-Field-by-field definitions in [`docs/PROTOCOLS.md`](docs/PROTOCOLS.md).
+The three parts share no code. They agree through documented wire formats
+([`docs/PROTOCOLS.md`](docs/PROTOCOLS.md)), and the cross-language threat format
+is checked against a measured golden corpus that both the Python and Kotlin
+suites read.
 
-Design notes that matter operationally:
+## Field- and fleet-tested
 
-- **Only a level number ever leaves the phone.** No audio is recorded,
-  buffered to disk, or transmitted — the PCM buffer is reduced to three scalars
-  in place and discarded. The microphone is optional at every layer; a
-  boot-started service never requests it at all.
-- Every sentence goes to both the multicast group *and* a subnet-directed
-  broadcast, because some access points drop multicast. That is why the tablet
-  de-duplicates byte-identical `$ZSHK` lines inside a 200 ms window.
-- GPS failure is never fatal — if location permission is missing or wiring
-  throws, every other channel keeps broadcasting and the notification says so.
-- A sensor the phone does not have emits **nothing** rather than a fabricated
-  zero, for heading and lux.
-- The odometer refuses steps that are inaccurate (> 20 m), below a 5 m jitter
-  floor, or imply more than 160 kph — so GPS multipath cannot inflate the trip.
+On the playa in 2026 the hero tablet's cockpit ran on its own GNSS, and that is
+where the parked-vehicle bug below was found and fixed. Everything else here was
+exercised across the whole fleet (four tablets, the beacon, the edge box) on the
+vehicle's network before the event:
 
----
+- **GNSS failover that can't flap.** The tablets take position from the beacon
+  over multicast and fall back to their own GNSS. The thresholds are
+  deliberately asymmetric (drop after 3 s unhealthy, recover only after 10 s
+  healthy), so a half-alive beacon can't make the source oscillate.
+- **A shared destination across the fleet.** Set a destination on one of the
+  two authority tablets and every screen adopts it over `$ZNAV`. Lamport
+  `(seq, src)` ordering decides conflicts, and adopting never re-broadcasts,
+  which is the whole no-echo guarantee.
+- **Street-following routes.** Every in-city corner snaps to a real survey-data
+  street vertex, so the drawn route stays on the drawn streets.
+- **Honest absence.** A missing sensor sends nothing, never a made-up `0.0`.
+  A dead vision feed reads `NO VISION`, never "all clear".
+- **A bug found and fixed on site, at Black Rock City.** A GPS distance filter
+  was starving a *parked* vehicle of its own fixes: 59 source flaps in a day, 0
+  after the fix. Driving had masked it on every bench test. The full story is in
+  [FIELD-NOTES.md](FIELD-NOTES.md).
 
-## `jetson/` — the edge box
+<p>
+<img src="docs/images/cockpit-map.png" width="49%" alt="MAP cockpit: instrument wall around the ground-track map">
+<img src="docs/images/passenger-art-card.png" width="49%" alt="Passenger display: parked at an art piece, with its image in the phosphor treatment">
+</p>
 
-A roof-mounted **Jetson Orin Nano Super**. Two Python packages:
+## The perception pipeline (built and bench-validated)
 
-### `zvision` — cameras → threat contacts → the fleet bus
+`zvision` reads a FLIR Lepton Ultra Wide thermal camera (160×120, 9 fps,
+through a PureThermal USB board) and USB low-light visible cameras (Sony STARVIS
+IMX462). It turns warm, moving bodies into vehicle-relative contacts with
+bearing, size and a collision flag, and broadcasts them to the tablets at 10 Hz.
+The DMX moving-head light swings to the most urgent one.
 
-```
-camera ring ──▶ detector ──▶ rig merge ──▶ ThreatBroadcaster ──▶ 239.7.7.20:10120
- per camera     per camera   full-circle    ZTHREAT frames        + subnet broadcast
- (az, lens,     (rel_az,     bearings +     10 Hz, TTL 1                │
-  fov)           size, id)   overlap dedup                              ▼
-                                                       tablets ▶ DRIVER HUD
-                                    │
-                                    └──▶ Tracker ──▶ olad ──▶ DMX moving head
-```
+Every item below was measured on the bench and is pinned by tests:
 
-Each camera is declared on the command line with its mounting bearing, field of
-view and lens model; `rig.py` unprojects pixels through a real lens model,
-rotates bearings into vehicle terms, namespaces track ids per camera, and
-collapses the same person seen by two overlapping cameras into one contact. On
-start-up it prints each camera's covered arc **and the blind sectors**, so a ring
-that does not close is found immediately rather than by wondering why nobody
-astern ever appears. A camera that fails costs its arc, not the run; if nothing
-opens at all the runner exits rather than broadcasting a confident "all clear"
-while blind.
+- **Thermal you can actually use.** The board's 8-bit output was nearly flat (a
+  standard deviation of 0.12 counts), so `zvision` reads raw 16-bit frames and
+  normalises them itself. A per-frame median centre with a smoothed scale cut
+  background swing on a static scene to 6.0 levels, against 10.9 for a naive
+  stretch. It also crops the two Lepton telemetry rows that would otherwise show
+  up as a permanent band of false motion.
+- **Sensor quirks handled, not hidden.** A flat-field correction re-baselines
+  every pixel at once, and a guard drops those frames instead of reporting a
+  scene full of people.
+- **Fusion by bearing.** Each camera is declared with its mount bearing, field of
+  view and lens model (fisheye or rectilinear). Pixels are projected into vehicle
+  bearings, so one person seen by two overlapping cameras becomes one contact. At
+  startup the rig prints each camera's arc and its blind sectors.
+- **Calibrated optics.** The thermal lens's "160°" turned out to be the diagonal,
+  not the horizontal (±64°, not ±80°). Geometry settled it, and a measurement
+  confirmed it: a true 40.4° target read 42.5°. The wrong reading would have
+  mis-aimed edge bearings, and the spotlight, by up to 16°. A camera mount tilted
+  more than 5° is refused rather than silently corrupting bearings.
+- **Fails safe.** A camera that drops out costs only its own arc, which shows as
+  blind, never as clear. A wedged USB camera is reopened without a restart; with
+  no camera at all the process exits.
+- **Perception to action.** The spotlight targets collision contacts first (a
+  constant-bearing, closing-range rule), then the largest, with hysteresis so it
+  doesn't twitch. BLACKOUT bypasses the normal output path, retries, and shows
+  `DMX FAIL` if the kill didn't land.
 
-**It also self-heals a wedged camera.** A V4L2 handle opened before its USB
-device is streaming-ready can hang forever in `select()` and never recover — on a
-cold boot that once left the box "running but blind" for hours, emitting false
-all-clear. A `CameraStallGuard` now reopens a camera that has stopped delivering
-frames (~20 s, measured on hardware), so a power-cycle no longer needs a human.
-The broadcaster likewise re-derives its subnet-broadcast target if it started
-before the DHCP lease, and `olad` is set to restart on crash — the fleet's
-edge is built to come back by itself after a power event.
+<p>
+<img src="docs/images/driver-hud-brake.png" width="49%" alt="Driver HUD: collision course, brake advised">
+<img src="docs/images/driver-hud-passing-art.png" width="49%" alt="Driver HUD: entering a street, passing an art piece">
+</p>
 
-**The detector today is background subtraction, not a model.** There is no
-TensorRT, ONNX, YOLO or PyTorch anywhere in the tree and no weights file. The
-trained thermal model is a roadmap ([`jetson/DETECTOR.md`](jetson/DETECTOR.md),
-[`jetson/TRAINING.md`](jetson/TRAINING.md)), and `zvision` ships a `--record` mode
-that dumps frames plus the motion detector's boxes as weak labels to feed it.
+*The driver HUD above is fed by `zvision --source fake` (synthetic contacts) and
+a simulated GPS track, so its contacts are not real people.*
 
-The **DMX tracker light** aims the moving head at the selected contact —
-collision contacts win, otherwise the largest, with hysteresis so the beam does
-not twitch between two similar contacts. When there is nothing to track it
-pulses to the beacon's `$ZAUD` level. Transport is HTTP to a local `olad`, which
-drives an FTDI USB-DMX dongle. A separate `dmxpark` module zeroes the whole
-universe as a fail-safe and is wired as `ExecStopPost` on both services.
+**What's next, honestly:**
+- Today's detector is classical computer vision (OpenCV MOG2 background
+  subtraction on the CPU), not a trained model.
+- Background subtraction assumes a still camera. On a *moving* vehicle the whole
+  scene changes, so on-vehicle detection needs the trained-model path designed
+  in [`jetson/DETECTOR.md`](jetson/DETECTOR.md): a YOLO-class detector exported
+  to TensorRT on the Orin, fine-tuned on thermal and validated by range bucket.
+  A `--record` mode already captures frames with weak labels to train it.
+- The camera mount, its on-vehicle calibration, and range measurements are still
+  to do.
 
-### `zdeck` — the physical control surface
+## Real vs. not yet
 
-Six keys on an Elgato Stream Deck Mini in the cab: BLACKOUT, LAMP, HOME, DIM−,
-DIM+, COLOUR. It borrows its channel numbers from `zvision`'s `TrackerConfig`
-rather than restating them, so the deck and the tracker cannot disagree about
-which channel is the dimmer. BLACKOUT deliberately bypasses the normal DMX send
-path and goes through `dmxpark.park()` with retries, and renders **DMX FAIL** in
-red if the kill did not land — a calm panel over a live beam is the one lie that
-matters here.
+| | Status |
+|---|---|
+| Cockpit on the hero tablet: live map, navigation, own-GNSS position | **Ran on the vehicle at Black Rock City 2026** |
+| Whole fleet: four tablets, beacon sensor channels, shared destination, GNSS failover | **Tested together on the vehicle network** before the event |
+| Perception pipeline, DMX tracking light, Stream Deck | **Built and bench-validated**; not yet run on the vehicle |
+| Trained detector | **Designed, not built** (classical CV today) |
+| Spotlight aim constants | **Uncalibrated placeholders** |
+| Vehicle drive-system telemetry | **Not connected.** The transport layer is a fake; real data arrives only from the beacon and the vision box |
+| Second battery tile (vehicle pack) | **A visibly labelled placeholder** until the Victron feed lands |
 
-**Known unresolved:** `zvision --dmx ola` and `zdeck` must not run at the same
-time. At the tracker's frame rate a BLACKOUT would be overwritten within ~125 ms
-and would flicker rather than kill. This works today only because `zvision`'s DMX
-output defaults to `none`. See [`jetson/DECK.md`](jetson/DECK.md).
+## What it demonstrates
 
----
+- **Edge perception:** thermal and visible sensing, lens models, calibration by
+  measurement
+- **Sensor fusion:** multi-camera bearing fusion, GNSS failover without flapping,
+  beacon sensor channels
+- **Real-time distributed systems:** multicast protocols at ~10 Hz across a fleet
+  of field devices, ordering and conflict resolution without a server
+- **Safety-first design:** blind arcs instead of false all-clears, absent data
+  never faked, a guaranteed light kill
+- **Engineering discipline:** 1,923 unit tests (`:app` 1,201, `:beacon` 180,
+  `jetson` 542, as of 2026-10-21), many mutation-checked, and CI with ktlint,
+  detekt, Android Lint and both suites
 
-## Status summary
-
-| | Built & verified | Built, not yet proven on the vehicle | Not built |
-|---|---|---|---|
-| **`:app`** | all three concepts, playa map, routing, shared `$ZNAV` destination (verified device-to-device), GPS sourcing incl. NET, burn-in, kiosk (incl. auto-relaunch after reboot), logging, passenger display | 2026 base-map address check on-device | real vehicle transports |
-| **`:beacon`** | GPS + compass end-to-end; all seven sentence types under test | the five sensor channels in a moving vehicle | production Pi + u-blox hub |
-| **`jetson/`** | ZTHREAT bus with `--source fake`; thermal + RGB cameras streaming on the box; boot-wedge self-heal proven on hardware; DMX fixture characterised; Stream Deck driven on real hardware | tracker aim calibration; the permanent multi-camera ring on the vehicle | trained detector, DMX arbitration between tracker and deck, proximity alarm |
-
----
-
-## Build and test
-
-Detail, including exact CI gates and deploy commands, in
-[`docs/BUILD.md`](docs/BUILD.md).
+## Run it
 
 ```bash
-# Android — run all of these before every commit
-./gradlew ktlintCheck detekt lintDebug testDebugUnitTest assembleDebug
+# Jetson perception with no hardware: synthetic contacts on the fleet bus
+cd jetson
+python3 -m unittest discover -s tests -t .      # standard library only
+python3 -m zvision --source fake -v
 
-# Jetson
-cd jetson && python3 -m unittest discover -s tests -t .
+# With cameras. Use stable by-path device names: /dev/videoN numbering
+# can swap between boots and silently run one camera through another's optics.
+python3 -m zvision --check \
+  --camera thermal:/dev/v4l/by-path/<port>-video-index0:az=0:fov=160:lens=fisheye:fovref=d:name=thermal
+
+# Android (JDK 17 + Android SDK)
+./gradlew ktlintCheck detekt lintDebug testDebugUnitTest assembleDebug
 ```
 
-Measured 2026-08-14, all green: **`:app` 1008 tests**, **`:beacon` 109**,
-**`jetson` 475**.
+Art and camp data come from the Burning Man API with your own key, fetched at
+build time (see [`docs/BUILD.md`](docs/BUILD.md)). Without a key everything
+still builds and runs; the art and camp markers stay hidden.
 
-CI runs on push and PR to `main`:
+**Docs:** [technical overview](docs/OVERVIEW.md) ·
+[architecture](ARCHITECTURE.md) · [wire protocols](docs/PROTOCOLS.md) ·
+[build & deploy](docs/BUILD.md) · [field notes](FIELD-NOTES.md) ·
+[Jetson](jetson/README.md) · [hardware](jetson/HARDWARE.md) ·
+[detector roadmap](jetson/DETECTOR.md)
 
-- `.github/workflows/android-ci.yml` — ktlint, detekt, Android Lint, unit tests,
-  assembleDebug, unscoped so both `:app` and `:beacon` are covered.
-- `.github/workflows/jetson-ci.yml` — path-filtered to `jetson/**` and
-  `protocol/**`; runs the Python suite plus a one-frame emit check.
+## What I built
 
----
-
-## Data sources
-
-- **Black Rock City GIS** — streets, plazas, blocks, trash fence, toilets and CPNs
-  from [`burningmantech/innovate-GIS-data`](https://github.com/burningmantech/innovate-GIS-data).
-  The 2026 dataset is bundled in `app/src/main/assets/brc/2026/`; 2025 is kept
-  alongside for reference. Used under the
-  [Innovate Terms of Service](https://innovate.burningman.org/terms-of-service-for-burning-man-apis-and-datasets/).
-- **Art and camp locations** — the BM API (`api.burningman.org`), fetched
-  offline-first and cached. Embargoed until roughly three weeks pre-event. The
-  2025 art layer was bundled from [`iBurnApp/iBurn-Data`](https://github.com/iBurnApp/iBurn-Data)
-  (MIT); the 2026 GIS ships no art layer at all.
+I designed the system and the three wire protocols, specified and assembled the
+edge hardware (Jetson, thermal and visible cameras, DMX light, control deck), and
+wrote the software with AI coding agents working under my direction and review.
+[`CLAUDE.md`](CLAUDE.md) is the working guide those agents follow.
 
 ## License
 
-Apache License 2.0 — see [LICENSE](LICENSE).
+Apache 2.0. Third-party map data is used under its own terms; see
+[`NOTICE`](NOTICE).
 
-The bundled Black Rock City GIS data is **not** covered by that license; it is
-used under the Innovate Terms of Service linked above. See [NOTICE](NOTICE) for
-the full third-party attribution.
+This project is not affiliated with, endorsed or verified by Burning Man Project.
+
+Rob Williams · [github.com/pureagave](https://github.com/pureagave)

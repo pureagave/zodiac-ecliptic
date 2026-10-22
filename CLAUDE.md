@@ -17,7 +17,7 @@ Burning Man). Its onboard system is called **ECLIPTIC**. Three parts, one system
   (camera ring → one full-circle threat list on the fleet bus + a DMX tracker
   light) and `zdeck` (a six-key Stream Deck control surface).
 
-**Read first:** [`README.md`](README.md) for what exists,
+**Read first:** [`README.md`](README.md) and [`docs/OVERVIEW.md`](docs/OVERVIEW.md) for what exists,
 [`ARCHITECTURE.md`](ARCHITECTURE.md) for how it is put together,
 [`docs/PROTOCOLS.md`](docs/PROTOCOLS.md) for the wire formats between the parts,
 [`docs/BUILD.md`](docs/BUILD.md) for build/test/deploy, [`SYNC.md`](SYNC.md) top
@@ -328,10 +328,15 @@ dimmer night set for dark adaptation.
 
 ## How we work
 
+> `SYNC.md`, `tasks/` and the audits live only in the private development repo;
+> the public tree is a filtered export of it (`publish/export.sh`), so they are
+> absent there by design.
+
 - **`SYNC.md` is append-only.** Anything significant decided, learned or built
   gets a dated entry, newest on top. Never rewrite past entries — supersede with
   a new one. This is the project's working memory.
-- **`README.md` is the public-facing snapshot.** Update it when a major feature
+- **`README.md` is the public portfolio front page; `docs/OVERVIEW.md` is the
+  detailed snapshot.** Update them when a major feature
   ships or the architecture changes. Don't log progress there — that is
   `SYNC.md`'s job.
 - **Commit regularly and keep CI green.** Small, runnable commits. Run the gates
