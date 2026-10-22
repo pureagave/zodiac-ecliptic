@@ -1,8 +1,27 @@
+# Tooling / agent workspaces
 .tooling/
-.gradle/
 .claude/
+memory/
+
+# Build output
+.gradle/
 **/build/
-local.properties
-*.log
+*.apk
+*.aab
 __pycache__/
 *.pyc
+*.log
+
+# Secrets and machine-local config — never committed
+local.properties
+.env
+.env.*
+*.jks
+*.keystore
+google-services.json
+
+# OS noise
+.DS_Store
+
+# Public-export secret replacement list (holds real values)
+publish/secrets.replace.txt
