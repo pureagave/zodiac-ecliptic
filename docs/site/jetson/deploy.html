@@ -450,7 +450,7 @@ Backstop if networking dies: the CP2102 serial console on J14 pins 3/4, 115200 8
 
 <pre><code># 1. Try it in the foreground first and watch the contacts scroll by
 sudo systemctl stop zvision
-python3 -m zvision -v --camera thermal:/dev/video0:az=0:fov=160:minarea=0.02
+python3 -m zvision -v --camera thermal:/dev/v4l/by-path/thermal:az=0:fov=160:minarea=0.02
 
 # 2. Happy? Validate the exact line before committing it to the service
 python3 -m zvision --check &lt;the same args&gt;

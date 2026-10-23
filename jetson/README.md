@@ -68,9 +68,9 @@ the same person seen by two overlapping cameras collapsed to one contact.
 
 ```bash
 python3 -m zvision -v \
-  --camera thermal:/dev/video0:az=0:fov=160:lens=fisheye:name=thermal \
-  --camera rgb:/dev/video2:az=120:fov=90:lens=pinhole:name=stbd-aft \
-  --camera rgb:/dev/video4:az=-120:fov=90:lens=pinhole:name=port-aft
+  --camera thermal:/dev/v4l/by-path/thermal:az=0:fov=160:lens=fisheye:name=thermal \
+  --camera rgb:/dev/v4l/by-path/stbd-aft:az=120:fov=90:fovref=h:lens=pinhole:name=stbd-aft \
+  --camera rgb:/dev/v4l/by-path/port-aft:az=-120:fov=90:fovref=h:lens=pinhole:name=port-aft
 ```
 
 `az` is the camera's bearing off the nose (+right), so `az=180` faces astern.
@@ -79,18 +79,20 @@ you find out the ring doesn't close now rather than by wondering why someone
 standing behind the car never appeared:
 
 ```
-     thermal: thermal /dev/video0 az=+0° fov=160°h equidistant -> covers -80°..+80°
-    stbd-aft: rgb /dev/video2 az=+120° fov=90°h rectilinear -> covers +75°..+165°
-    port-aft: rgb /dev/video4 az=-120° fov=90°h rectilinear -> covers -165°..-75°
-  blind: +166°..+195°
+     thermal: thermal /dev/v4l/by-path/thermal az=+0° fov=160°d equidistant -> covers -64°..+64°
+    stbd-aft: rgb /dev/v4l/by-path/stbd-aft az=+120° fov=90°h rectilinear -> covers +75°..+165°
+    port-aft: rgb /dev/v4l/by-path/port-aft az=-120° fov=90°h rectilinear -> covers -165°..-75°
+  blind: -74°..-64°, +65°..+75°, +166°..+195°
 ```
 
-> **That transcript predates 2026-08-10 and shows `fov=160°h -> ±80°`.**
-> `--fov-ref` now defaults to **`d`**, so the same command prints `fov=160°d ...
-> covers -64°..+64°`. The Lepton Ultra Wide's quoted 160° is the **diagonal** —
-> argued from physics in `HARDWARE.md` §1 and since confirmed by measurement (a
-> true 40.4° target reported at 42.5°; the horizontal reading predicts 32.3°).
-> The tablet's `SurroundRing.COVERED_ARCS` carries the matching ±64°.
+> The by-path names are shortened here; use the real `/dev/v4l/by-path/` entries,
+> which survive reboots where `/dev/videoN` does not. The thermal's 160° is a
+> **diagonal**, which is `--fov-ref`'s default; the RGB lenses here are quoted as
+> widths, so they say `fovref=h`. That is why the thermal covers ±64°, not ±80°,
+> and why the transcript shows two narrow blind gaps either side of it: argued
+> from physics in `HARDWARE.md` §1 and confirmed by measurement (a true 40.4°
+> target reported at 42.5°; the horizontal reading predicts 32.3°). The tablet's
+> `SurroundRing.COVERED_ARCS` carries the matching ±64°.
 
 A camera that won't open, or starts throwing mid-run, costs you its arc — not
 the run. If *nothing* opens, the runner exits rather than broadcasting a
@@ -111,7 +113,7 @@ code edit.
 arcs, and exits without opening a camera or touching the network:
 
 ```bash
-python3 -m zvision --check --min-area 0.008 --camera thermal:/dev/video0:az=0:fov=160
+python3 -m zvision --check --min-area 0.008 --camera thermal:/dev/v4l/by-path/thermal:az=0:fov=160
 ```
 
 Run it before writing anything into `/etc/default/zvision` — the service is
@@ -169,7 +171,7 @@ in [DEPLOY.md §8](DEPLOY.md#8-tuning-on-playa-laptop-only--no-keyboard-mouse-or
 ## Recording training data
 
 ```bash
-python3 -m zvision --record /data/drive-01 --record-hz 1 --camera thermal:/dev/video0:az=0:fov=160
+python3 -m zvision --record /data/drive-01 --record-hz 1 --camera thermal:/dev/v4l/by-path/thermal:az=0:fov=160
 ```
 
 Writes frames per camera plus an `index.jsonl` carrying the **pixel boxes** the

@@ -3,6 +3,11 @@
 Reference documentation for the Zodiac vehicle software. Start at the
 repository [`README.md`](../README.md) for what the system is.
 
+The same material is published as a browsable site at
+<https://pureagave.github.io/zodiac-ecliptic/> (source in [`site/`](site/)). The
+site is hand-written from these Markdown files, so where the two disagree, the
+Markdown is the reference and the site is the one to fix.
+
 ## Core
 
 | Doc | What it answers |

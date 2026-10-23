@@ -43,7 +43,7 @@ all pinned by tests, see
                                                   ▼                  │ ZTHREAT
                                         ┌─────────────────┐          ▼
                                         │  :app tablets   │◀── 239.7.7.20:10120
-                                        │ (four, today)   │    + subnet broadcast
+                                        │ (target 8–10)   │    + subnet broadcast
                                         └───────┬─────────┘
                                                 │ $ZNAV 239.7.7.30:10130       │ DMX (via olad)
                                                 └─▶ shared drive-to target     ▼
@@ -326,7 +326,7 @@ output defaults to `none`. See [`jetson/DECK.md`](../jetson/DECK.md).
 | | Built & verified | Built, not yet proven on the vehicle | Not built |
 |---|---|---|---|
 | **`:app`** | the hero cockpit ran on the vehicle at BRC 2026 (on its own GNSS after the on-site GPS fix); all three concepts, playa map, routing, shared `$ZNAV` destination (verified device-to-device), GPS sourcing incl. NET, burn-in, kiosk (incl. auto-relaunch after reboot), logging, passenger display | 2026 base-map address check on-device | real vehicle transports |
-| **`:beacon`** | GPS + compass end-to-end; ran on the vehicle at BRC 2026; all seven sentence types under test | the five sensor channels in a moving vehicle | production Pi + u-blox hub |
+| **`:beacon`** | GPS + compass end-to-end; ran on the vehicle at BRC 2026, sensor readings seen live there; all seven sentence types under test | auto-dim from `$ZENV` end to end on the tablets | production Pi + u-blox hub |
 | **`jetson/`** | ZTHREAT bus with `--source fake`; thermal + RGB cameras streaming on the box; boot-wedge self-heal proven on hardware; DMX fixture characterised; Stream Deck driven on real hardware | tracker aim calibration; the permanent multi-camera ring on the vehicle | trained detector, DMX arbitration between tracker and deck, proximity alarm |
 
 ---

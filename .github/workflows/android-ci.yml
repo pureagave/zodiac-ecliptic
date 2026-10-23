@@ -49,5 +49,24 @@ jobs:
       - name: Unit tests
         run: ./gradlew testDebugUnitTest --stacktrace
 
+      # Prints the per-module totals from the JUnit XML, so the test counts
+      # quoted in README.md can be checked against any run.
+      - name: Test counts
+        if: always()
+        run: |
+          python3 - <<'PY' | tee -a "$GITHUB_STEP_SUMMARY"
+          import glob, xml.etree.ElementTree as ET
+          print("| module | tests | skipped | failed |")
+          print("|---|---|---|---|")
+          for m in ("app", "beacon"):
+              t = s = f = 0
+              for p in glob.glob(f"{m}/build/test-results/testDebugUnitTest/*.xml"):
+                  r = ET.parse(p).getroot()
+                  t += int(r.get("tests"))
+                  s += int(r.get("skipped"))
+                  f += int(r.get("failures")) + int(r.get("errors"))
+              print(f"| :{m} | {t} | {s} | {f} |")
+          PY
+
       - name: Assemble debug
         run: ./gradlew assembleDebug --stacktrace

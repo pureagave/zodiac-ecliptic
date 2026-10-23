@@ -384,9 +384,9 @@ One thermal forward plus RGB around the body. Repeat `--camera` per camera,
 each with its mounting bearing (`az`, +right off the nose) and optics:
 ```bash
 python3 -m zvision -v \
-  --camera thermal:/dev/video0:az=0:fov=160:lens=fisheye:name=thermal \
-  --camera rgb:/dev/video2:az=120:fov=90:lens=pinhole:name=stbd-aft \
-  --camera rgb:/dev/video4:az=-120:fov=90:lens=pinhole:name=port-aft
+  --camera thermal:/dev/v4l/by-path/thermal:az=0:fov=160:lens=fisheye:name=thermal \
+  --camera rgb:/dev/v4l/by-path/stbd-aft:az=120:fov=90:fovref=h:lens=pinhole:name=stbd-aft \
+  --camera rgb:/dev/v4l/by-path/port-aft:az=-120:fov=90:fovref=h:lens=pinhole:name=port-aft
 ```
 zvision merges them into one full-circle contact list: bearings rotated into
 vehicle terms, ids namespaced per camera, and one person seen by two
@@ -395,13 +395,14 @@ overlapping cameras collapsed to a single contact (`--merge-deg`, default 8°).
 Verbose start-up prints each camera's arc **and any blind sector** — check that
 before you go hunting for contacts that were never visible:
 ```
-     thermal: thermal /dev/video0 az=+0° fov=160°h equidistant -> covers -80°..+80°
-    stbd-aft: rgb /dev/video2 az=+120° fov=90°h rectilinear -> covers +75°..+165°
-    port-aft: rgb /dev/video4 az=-120° fov=90°h rectilinear -> covers -165°..-75°
-  blind: +166°..+195°
+     thermal: thermal /dev/v4l/by-path/thermal az=+0° fov=160°d equidistant -> covers -64°..+64°
+    stbd-aft: rgb /dev/v4l/by-path/stbd-aft az=+120° fov=90°h rectilinear -> covers +75°..+165°
+    port-aft: rgb /dev/v4l/by-path/port-aft az=-120° fov=90°h rectilinear -> covers -165°..-75°
+  blind: -74°..-64°, +65°..+75°, +166°..+195°
 ```
-(That transcript predates the 2026-08-10 `--fov-ref d` default; the same
-thermal now prints `fov=160°d … covers -64°..+64°`.)
+(By-path names shortened. The thermal's 160° is a diagonal, the `--fov-ref`
+default, so it covers ±64°; the RGB lenses are quoted as widths, hence
+`fovref=h`, and the gaps either side of the thermal are real.)
 Measure each camera's `az` against the vehicle's actual nose, not by eye — an
 error there rotates every contact from that camera and swings the tracker light
 onto the wrong person. A camera that won't open (or dies mid-run) costs you its
@@ -533,7 +534,7 @@ Jetson, because you're seeing exactly what the driver sees.
 ```bash
 # 1. Try it in the foreground first and watch the contacts scroll by
 sudo systemctl stop zvision
-python3 -m zvision -v --camera thermal:/dev/video0:az=0:fov=160:minarea=0.02
+python3 -m zvision -v --camera thermal:/dev/v4l/by-path/thermal:az=0:fov=160:minarea=0.02
 
 # 2. Happy? Validate the exact line before committing it to the service
 python3 -m zvision --check <the same args>
@@ -566,7 +567,7 @@ Set a rig-wide default with the flag; override one camera with the spec key.
 ```bash
 # rig-wide default, with one noisier camera pulled back
 python3 -m zvision --check --min-area 0.008 \
-  --camera thermal:/dev/video0:az=0:fov=160:lens=fisheye:name=thermal \
+  --camera thermal:/dev/v4l/by-path/thermal:az=0:fov=160:lens=fisheye:name=thermal \
   --camera rgb:/dev/video2:az=105:fov=87:lens=pinhole:name=stbd:minarea=0.02 \
   --camera rgb:/dev/video4:az=-105:fov=87:lens=pinhole:name=port \
   --camera rgb:/dev/video6:az=180:fov=87:lens=pinhole:name=aft

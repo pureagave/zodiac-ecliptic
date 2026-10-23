@@ -840,8 +840,9 @@ known address and confirming it lands on the right corner is outstanding.
 - **Dust** — alkaline playa dust penetrates everything. IP-rated devices, sealed
   enclosures, and note that **thermal optics foul and glass blocks LWIR** — a
   germanium or other IR-transmissive window is required, not a glass one.
-- **Power** — a moving head, a Jetson, ten tablets and Starlink is a real 12 V
-  budget.
+- **Power** — a moving head, a Jetson, ten tablets and Starlink is a real load.
+  The vehicle runs a 48 V DC system, with 120 V AC from an inverter and 12 V
+  step-downs for the low-voltage gear.
 - **Vibration** — damped mounts. This is also the camera stabilisation strategy:
   mechanical damping plus a software detection tracker, not video stabilisation.
 - **14 days unattended** — nothing may depend on someone noticing a failure.

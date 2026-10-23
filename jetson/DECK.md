@@ -90,7 +90,7 @@ within ~125 ms. BLACKOUT would *flicker*, not kill — which is worse than not
 having the key at all, because the operator would believe the light was off.
 
 **Do not enable `--dmx ola` on zvision and this service at the same time**
-until an authority mechanism exists. Tracked in `tasks/open.md`.
+until an authority mechanism exists. Tracked in the private development backlog.
 
 The crash fail-safe (`ExecStopPost=... zvision.dmxpark`) on both units now
 reads its own service's `ZVISION_ARGS`/`ZDECK_ARGS` (via `--from-args-env`) to

@@ -120,7 +120,7 @@ multicast channel, <code>$ZNAV</code>, and every node announces its build versio
   <title id="flow-title">How the three parts of Zodiac talk to each other</title>
   <desc id="flow-desc">The beacon phone broadcasts NMEA telemetry to multicast group 239.7.7.10 port 10110
   plus a subnet broadcast copy. The Jetson vision box broadcasts ZTHREAT frames to 239.7.7.20 port 10120
-  plus a subnet broadcast copy. Both are received by the fleet of Android tablets (four today) running the
+  plus a subnet broadcast copy. Both are received by the fleet of Android tablets (a design target of eight to ten; four in service today) running the
   cockpit app. The tablets also share a drive-to destination among themselves over a third multicast
   channel, $ZNAV, on 239.7.7.30 port 10130. The Jetson also listens to the beacon's audio-level channel,
   and drives a DMX moving-head tracker light over a separate DMX cable, outside the network.</desc>
@@ -273,7 +273,7 @@ fall where a feature list would suggest.</p>
     <span class="statboard-name">:beacon &mdash; the sensor hub</span>
     <span class="chip ok">Built &amp; verified</span>
     <span class="statboard-note">GPS and compass proven end to end; ran on the vehicle at Black Rock
-    City 2026; all seven sentence types under test. The five sensor channels have not yet been exercised in a moving vehicle.</span>
+    City 2026, where its sensor readings were seen live; all seven sentence types under test.</span>
   </li>
   <li>
     <span class="statboard-name">jetson/ &mdash; the edge box</span>

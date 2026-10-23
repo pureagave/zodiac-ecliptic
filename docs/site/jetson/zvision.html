@@ -140,9 +140,9 @@
 <h2 id="declare">Declaring cameras</h2>
 
 <pre><code>python3 -m zvision -v \
-  --camera thermal:/dev/video0:az=0:fov=160:lens=fisheye:name=thermal \
-  --camera rgb:/dev/video2:az=120:fov=90:lens=pinhole:name=stbd-aft \
-  --camera rgb:/dev/video4:az=-120:fov=90:lens=pinhole:name=port-aft</code></pre>
+  --camera thermal:/dev/v4l/by-path/thermal:az=0:fov=160:lens=fisheye:name=thermal \
+  --camera rgb:/dev/v4l/by-path/stbd-aft:az=120:fov=90:fovref=h:lens=pinhole:name=stbd-aft \
+  --camera rgb:/dev/v4l/by-path/port-aft:az=-120:fov=90:fovref=h:lens=pinhole:name=port-aft</code></pre>
 
 <p><code>az</code> is the camera's bearing off the nose (+right), so <code>az=180</code> faces
 astern. On the box these live in <code>ZVISION_ARGS</code> in
@@ -150,15 +150,14 @@ astern. On the box these live in <code>ZVISION_ARGS</code> in
 
 <p>Verbose start-up prints each camera's covered arc <strong>and the blind sectors</strong>:</p>
 
-<pre class="diagram"><code>     thermal: thermal /dev/video0 az=+0&deg; fov=160&deg;h equidistant -&gt; covers -80&deg;..+80&deg;
-    stbd-aft: rgb /dev/video2 az=+120&deg; fov=90&deg;h rectilinear -&gt; covers +75&deg;..+165&deg;
-    port-aft: rgb /dev/video4 az=-120&deg; fov=90&deg;h rectilinear -&gt; covers -165&deg;..-75&deg;
-  blind: +166&deg;..+195&deg;</code></pre>
+<pre class="diagram"><code>     thermal: thermal /dev/v4l/by-path/thermal az=+0&deg; fov=160&deg;d equidistant -&gt; covers -64&deg;..+64&deg;
+    stbd-aft: rgb /dev/v4l/by-path/stbd-aft az=+120&deg; fov=90&deg;h rectilinear -&gt; covers +75&deg;..+165&deg;
+    port-aft: rgb /dev/v4l/by-path/port-aft az=-120&deg; fov=90&deg;h rectilinear -&gt; covers -165&deg;..-75&deg;
+  blind: -74&deg;..-64&deg;, +65&deg;..+75&deg;, +166&deg;..+195&deg;</code></pre>
 
 <div class="note">
-  <span class="label">That transcript predates the 2026-08-10 default change</span>
-  <p><code>--fov-ref</code> now defaults to <code>d</code>, so the same command prints
-  <code>fov=160&deg;d &hellip; covers -64&deg;..+64&deg;</code>. The Lepton Ultra Wide's quoted
+  <span class="label">Why the thermal covers &plusmn;64&deg;, not &plusmn;80&deg;</span>
+  <p>By-path names are shortened here; use the real <code>/dev/v4l/by-path/</code> entries, which survive reboots. <code>--fov-ref</code> defaults to <code>d</code>, and the RGB lenses, quoted as widths, say <code>fovref=h</code>. The Lepton Ultra Wide's quoted
   160&deg; is the <strong>diagonal</strong> &mdash; argued from physics in <code>HARDWARE.md</code>
   and since confirmed by measurement (a true 40.4&deg; target reported at 42.5&deg;; the horizontal
   reading predicts 32.3&deg;). Both sides of the vehicle now compute
@@ -227,7 +226,7 @@ the matching <code>--camera</code> spec key overrides one camera.</p>
 <h2 id="check">--check before you commit a config</h2>
 
 <pre><code>python3 -m zvision --check --min-area 0.008 \
-  --camera thermal:/dev/video0:az=0:fov=160:lens=fisheye:name=thermal</code></pre>
+  --camera thermal:/dev/v4l/by-path/thermal:az=0:fov=160:lens=fisheye:name=thermal</code></pre>
 
 <p>Validates the whole configuration, prints the resolved rig and its blind arcs, and exits
 <strong>without</strong> opening a camera or touching the network.</p>
@@ -241,7 +240,7 @@ the matching <code>--camera</code> spec key overrides one camera.</p>
 <h2 id="record">Recording training data</h2>
 
 <pre><code>python3 -m zvision --record /data/drive-01 --record-hz 1 \
-  --camera thermal:/dev/video0:az=0:fov=160:fovref=d:lens=fisheye:name=thermal</code></pre>
+  --camera thermal:/dev/v4l/by-path/thermal:az=0:fov=160:fovref=d:lens=fisheye:name=thermal</code></pre>
 
 <p>Writes frames per camera plus an <code>index.jsonl</code> carrying the <strong>pixel boxes</strong>
 the motion detector found &mdash; weak labels, so an annotator corrects rather than draws.</p>

@@ -6,6 +6,7 @@ on:
     paths: ["jetson/**", "protocol/**", ".github/workflows/jetson-ci.yml"]
   pull_request:
     paths: ["jetson/**", "protocol/**", ".github/workflows/jetson-ci.yml"]
+  workflow_dispatch:
 
 jobs:
   zvision-tests:
@@ -18,7 +19,10 @@ jobs:
       # Core + tests are standard-library only, so no install step is needed.
       - name: Run zvision unit tests
         working-directory: jetson
-        run: python -m unittest discover -s tests -t . -v
+        run: |
+          set -o pipefail
+          python -m unittest discover -s tests -t . -v 2>&1 | tee unittest.log
+          grep -E "^Ran [0-9]+ tests" unittest.log | sed 's/^/jetson: /' >> "$GITHUB_STEP_SUMMARY"
       - name: Byte-check the runner emits a frame
         working-directory: jetson
         run: python -m zvision --once -v

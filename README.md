@@ -1,4 +1,8 @@
-# Zodiac
+# Zodiac · ECLIPTIC
+
+[![Android CI](https://github.com/pureagave/zodiac-ecliptic/actions/workflows/android-ci.yml/badge.svg)](https://github.com/pureagave/zodiac-ecliptic/actions/workflows/android-ci.yml)
+[![jetson-ci](https://github.com/pureagave/zodiac-ecliptic/actions/workflows/jetson-ci.yml/badge.svg)](https://github.com/pureagave/zodiac-ecliptic/actions/workflows/jetson-ci.yml)
+[![secrets-scan](https://github.com/pureagave/zodiac-ecliptic/actions/workflows/secrets-scan.yml/badge.svg)](https://github.com/pureagave/zodiac-ecliptic/actions/workflows/secrets-scan.yml)
 
 ![Zodiac at dusk on the open playa, Black Rock City](docs/images/zodiac-playa.jpg)
 
@@ -9,12 +13,17 @@ fiction.*
 **ECLIPTIC is a distributed sensing, perception and actuation system for a moving
 art car at Burning Man.** A GNSS and sensor beacon, a fleet of Android cockpit
 tablets, and a Jetson Orin thermal and visible-light perception pipeline that
-drives a tracking spotlight, all on the vehicle's own network with no cloud.
+can drive a tracking spotlight, all on the vehicle's own network with no cloud.
 At Black Rock City in 2026 the beacon, the vehicle WiFi and the hero cockpit ran
 on the vehicle, and a GPS bug was found and fixed on site. The full fleet was
 tested together on the vehicle network before the event. The perception
 pipeline is built and bench-validated, and its Jetson is installed in the
 vehicle; mounting the cameras and running it there is next.
+
+**My role:** sole architect and builder. I rebuilt the vehicle, conceived and
+designed ECLIPTIC, specified and integrated its edge hardware, and wrote the
+software with AI coding agents working under my direction and review
+([more](#what-i-built)).
 
 ![RADAR cockpit: a motion-tracker scope over the live city map](docs/images/cockpit-radar.png)
 
@@ -134,7 +143,7 @@ IMX462). It turns warm, moving bodies into vehicle-relative contacts with
 bearing, size and a collision flag, and broadcasts them to the tablets at 10 Hz.
 The DMX moving-head light swings to the most urgent one.
 
-Every item below was measured on the bench and is pinned by tests:
+Every item below was measured on the bench or pinned by tests, and most are both:
 
 - **Thermal you can actually use.** The board's 8-bit output was nearly flat (a
   standard deviation of 0.12 counts), so `zvision` reads raw 16-bit frames and
@@ -147,7 +156,8 @@ Every item below was measured on the bench and is pinned by tests:
   scene full of people.
 - **Fusion by bearing.** Each camera is declared with its mount bearing, field of
   view and lens model (fisheye or rectilinear). Pixels are projected into vehicle
-  bearings, so one person seen by two overlapping cameras becomes one contact. At
+  bearings, so one person seen by two overlapping cameras becomes one contact
+  (pinned by tests). At
   startup the rig prints each camera's arc and its blind sectors.
 - **Calibrated optics.** The thermal lens's "160°" turned out to be the diagonal,
   not the horizontal (±64°, not ±80°). Geometry settled it, and a measurement
@@ -186,7 +196,7 @@ name never covers the collision warning: it is dropped while the warning is up.*
 
 | | Status |
 |---|---|
-| Hero cockpit (live map, navigation), beacon, vehicle WiFi | **Ran on the vehicle at Black Rock City 2026** |
+| Hero cockpit (live map, navigation), beacon with its live sensor readings, vehicle WiFi | **Ran on the vehicle at Black Rock City 2026** |
 | Whole fleet: four tablets, beacon sensor channels, shared destination, GNSS failover | **Tested together on the vehicle network** before the event |
 | Perception pipeline, DMX tracking light, Stream Deck | **Built and bench-validated**; the Jetson is installed in the vehicle, the cameras are not yet mounted |
 | Trained detector | **Designed, not built** (classical CV today) |

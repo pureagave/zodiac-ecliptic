@@ -336,7 +336,7 @@ brightness. Restoring the signal returned it to obeying DMX (all-zero universe
 turns the tracker light into an uncommanded disco, while the driver's HUD still
 assumes it is pointing at people. `OlaDmxSink` deliberately swallows send
 failures so lighting can never take down the threat broadcaster — but it has no
-concept of *keeping the wire alive*. Tracked in `tasks/open.md`.
+concept of *keeping the wire alive*. Tracked in the private development backlog.
 
 ### 8.4 The decimal point is the signal indicator
 

@@ -285,7 +285,7 @@ There are **no hardcoded IPs anywhere.** All four fleet streams (NMEA
 `.40:10140`) ride fixed multicast groups compiled into every part, with a
 subnet-directed broadcast copy for access points that drop multicast. See [`PROTOCOLS.md`](PROTOCOLS.md) §1.
 
-Fleet target is 8–10 tablets in one vehicle. Per-tablet GPS receivers do not
+Fleet target is 8–10 tablets in one vehicle (four in service today). Per-tablet GPS receivers do not
 scale for that — Bluetooth GPS pucks cap at roughly five simultaneous clients —
 which is the whole reason for a single shared sensor hub.
 
@@ -300,7 +300,8 @@ Every constraint below is why something in the design looks the way it does.
 - **Dust** — alkaline playa dust penetrates everything. IP-rated devices and
   sealed enclosures; and note the thermal optic fouls.
 - **Power** — a moving head (100–300 W+), a Jetson, ten tablets and Starlink is a
-  real 12 V budget.
+  real load. The vehicle runs a 48 V DC system, with 120 V AC from an inverter
+  and 12 V step-downs for the low-voltage gear.
 - **Vibration** — damped mounts. This is also the camera stabilisation strategy:
   mechanical damping plus a software detection tracker, not video stabilisation.
 - **14 days unattended** — nothing may depend on someone noticing a failure. This

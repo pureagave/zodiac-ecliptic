@@ -106,7 +106,7 @@
 <thead><tr><th></th><th>Built &amp; verified</th><th>Built, not yet proven on the vehicle</th><th>Not built</th></tr></thead>
 <tbody>
 <tr><th><code>:app</code></th><td>The hero cockpit ran on the vehicle at Black Rock City 2026 (on its own GNSS after a GPS bug was found and fixed on site); the whole fleet was tested together on the vehicle network before the event. All three concepts, playa map, routing, shared <code>$ZNAV</code> destination (verified device-to-device), GPS sourcing incl. NET, burn-in, kiosk (incl. auto-relaunch after reboot), logging, passenger display</td><td>2026 base-map address check on-device</td><td>Real vehicle transports</td></tr>
-<tr><th><code>:beacon</code></th><td>GPS + compass end to end; ran on the vehicle at Black Rock City 2026 on the vehicle WiFi; all seven sentence types under test</td><td>The five sensor channels in a moving vehicle</td><td>Production Pi + u-blox hub</td></tr>
+<tr><th><code>:beacon</code></th><td>GPS + compass end to end; ran on the vehicle at Black Rock City 2026 on the vehicle WiFi; sensor readings seen live there; all seven sentence types under test</td><td>Auto-dim from <code>$ZENV</code> end to end on the tablets</td><td>Production Pi + u-blox hub</td></tr>
 <tr><th><code>jetson/</code></th><td>ZTHREAT bus with <code>--source fake</code>; thermal + RGB cameras streaming on the box on the bench; box installed in the vehicle; boot-wedge self-heal proven on hardware; DMX fixture characterised; Stream Deck driven on real hardware</td><td>Tracker aim calibration; mounting the cameras and running <code>zvision</code> on the vehicle (it did not run at BRC 2026)</td><td>Trained detector, DMX arbitration between tracker and deck, proximity alarm</td></tr>
 </tbody>
 </table>
