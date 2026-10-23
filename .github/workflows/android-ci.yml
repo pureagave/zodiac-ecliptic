@@ -22,6 +22,10 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+        # The default list includes the long-retired "tools" package, which
+        # current runner images no longer resolve; AGP fetches the rest.
+        with:
+          packages: platform-tools
 
       # Uses the project's Gradle wrapper (8.10.2) as the single source of
       # truth for the Gradle version; the action provides dependency caching.
