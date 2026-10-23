@@ -25,7 +25,12 @@ designed ECLIPTIC, specified and integrated its edge hardware, and wrote the
 software with AI coding agents working under my direction and review
 ([more](#what-i-built)).
 
-![RADAR cockpit: a motion-tracker scope over the live city map](docs/images/cockpit-radar.png)
+![Cockpit demo: a simulated drive into the city at 6:00, cycling the MAP, DRIVER and RADAR concepts](docs/images/cockpit-demo.gif)
+
+<sub>Bench recording from the hero display (Galaxy Tab S9+): a simulated drive on
+FAKE GPS at 40 kph into the city at 6:00, with street and art callouts, cycling
+MAP → DRIVER → RADAR. Played at 1.5× speed. DRIVER reads NO VISION because no
+Jetson is on the bench, and it says so rather than inventing contacts.</sub>
 
 ## Why it exists
 
