@@ -165,7 +165,7 @@ and a roof antenna. The travel router keeps the AP and DHCP role in both cases.
 
 ### Jetson Orin Nano Super
 
-Roof-mounted. Runs `zvision`, `zdeck`, the breadcrumb tracklog service and its
+Mounted in the vehicle. Runs `zvision`, `zdeck`, the breadcrumb tracklog service and its
 read-only HTTP server. Its four USB-A connectors are a single onboard 4-port hub.
 
 **Do not re-cable the cameras to free a port.** Adding a hub upstream changes

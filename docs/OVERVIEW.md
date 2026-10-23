@@ -1,7 +1,8 @@
 # Zodiac — technical overview
 
-**ECLIPTIC**, the onboard system of **Zodiac**, a retro-futuristic rover art car
-at Burning Man. It is one system in three parts: a fleet of Android tablets
+**ECLIPTIC**, the onboard system of **Zodiac**, a retro-futuristic,
+post-apocalyptic people carrier at
+Burning Man. It is one system in three parts: a fleet of Android tablets
 showing an 80s green-phosphor cockpit over a live Black Rock City map, a phone
 that acts as the vehicle's shared sensor hub, and a Jetson vision box built to
 find people in the dark and tell every screen — and a spotlight — where they
@@ -253,7 +254,7 @@ Design notes that matter operationally:
 
 ## `jetson/` — the edge box
 
-A roof-mounted **Jetson Orin Nano Super**. Two Python packages:
+An in-vehicle **Jetson Orin Nano Super**. Two Python packages:
 
 ### `zvision` — cameras → threat contacts → the fleet bus
 

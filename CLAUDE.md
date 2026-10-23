@@ -4,7 +4,7 @@ Guidance for Claude Code (claude.ai/code) when working in this repository.
 
 ## Project
 
-**Zodiac** — software for a retro-futuristic rover art car (a mutant vehicle at
+**Zodiac** — software for a retro-futuristic, post-apocalyptic people carrier (an art car at
 Burning Man). Its onboard system is called **ECLIPTIC**. Three parts, one system:
 
 - **`:app`** — the Android tablet cockpit (`org.pureagave.zodiac.control`). Kotlin

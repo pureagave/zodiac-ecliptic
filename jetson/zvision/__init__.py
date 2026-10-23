@@ -1,6 +1,6 @@
 """zvision — Zodiac vehicle edge-box (Jetson) software.
 
-Runs on the roof-mounted Jetson Orin Nano. Turns thermal/RGB camera frames into
+Runs on the in-vehicle Jetson Orin Nano. Turns thermal/RGB camera frames into
 vehicle-relative *threat contacts* and broadcasts them on the fleet bus, where
 every tablet's DRIVER night-HUD is already listening (see the Kotlin
 `NetworkThreatSource` / `ThreatProtocol`). The wire format here is a byte-exact

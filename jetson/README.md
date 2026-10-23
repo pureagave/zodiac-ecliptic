@@ -1,6 +1,6 @@
 # zvision — Zodiac edge-box (Jetson) software
 
-Runs on the roof-mounted **Jetson Orin Nano Super**. Turns thermal / RGB camera
+Runs on the in-vehicle **Jetson Orin Nano Super**. Turns thermal / RGB camera
 frames into vehicle-relative **threat contacts** and broadcasts them on the
 fleet bus, where every tablet's DRIVER night-HUD is already listening. A second,
 optional output drives a **DMX moving-head "tracker" light** that points at those

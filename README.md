@@ -1,7 +1,8 @@
 # Zodiac
 
-*A retro-futuristic rover, a city that exists for one week a year, and a cockpit
-straight out of 80s science fiction.*
+*Software for Zodiac: a retro-futuristic, post-apocalyptic people carrier that
+I run at Burning Man, with a cockpit straight out of 80s science
+fiction.*
 
 **ECLIPTIC is a distributed sensing, perception and actuation system for a moving
 art car at Burning Man.** A GNSS and sensor beacon, a fleet of Android cockpit
@@ -10,7 +11,8 @@ drives a tracking spotlight, all on the vehicle's own network with no cloud.
 At Black Rock City in 2026 the beacon, the vehicle WiFi and the hero cockpit ran
 on the vehicle, and a GPS bug was found and fixed on site. The full fleet was
 tested together on the vehicle network before the event. The perception
-pipeline is built and bench-validated; mounting it on the vehicle is next.
+pipeline is built and bench-validated, and its Jetson is installed in the
+vehicle; mounting the cameras and running it there is next.
 
 ![RADAR cockpit: a motion-tracker scope over the live city map](docs/images/cockpit-radar.png)
 
@@ -157,7 +159,7 @@ a simulated GPS track, so its contacts are not real people.*
 |---|---|
 | Hero cockpit (live map, navigation), beacon, vehicle WiFi | **Ran on the vehicle at Black Rock City 2026** |
 | Whole fleet: four tablets, beacon sensor channels, shared destination, GNSS failover | **Tested together on the vehicle network** before the event |
-| Perception pipeline, DMX tracking light, Stream Deck | **Built and bench-validated**; not yet run on the vehicle |
+| Perception pipeline, DMX tracking light, Stream Deck | **Built and bench-validated**; the Jetson is installed in the vehicle, the cameras are not yet mounted |
 | Trained detector | **Designed, not built** (classical CV today) |
 | Spotlight aim constants | **Uncalibrated placeholders** |
 | Vehicle drive-system telemetry | **Not connected.** The transport layer is a fake; real data arrives only from the beacon and the vision box |

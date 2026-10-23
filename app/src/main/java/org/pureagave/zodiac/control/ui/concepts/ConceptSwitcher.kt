@@ -11,9 +11,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.pureagave.zodiac.control.core.model.CockpitConcept
+
+/**
+ * Space a concept's top row must leave free at its right end, measured from the
+ * inside of the concept's outer border: the switcher's 12 dp inset plus its
+ * widest label ("DRIVER  >", ~98 dp) plus a gap. Without it the switcher
+ * floats over whatever that row draws there.
+ */
+val CONCEPT_SWITCHER_CLEARANCE: Dp = 120.dp
 
 /**
  * Tap to cycle A → B → C → D → A. Always sits in the top-right; rendered last

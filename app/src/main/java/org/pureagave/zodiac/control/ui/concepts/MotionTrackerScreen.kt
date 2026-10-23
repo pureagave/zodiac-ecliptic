@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -44,6 +45,7 @@ import org.pureagave.zodiac.control.ui.ops.headingGuidanceBar
 import org.pureagave.zodiac.control.ui.ops.opsReadout
 import org.pureagave.zodiac.control.ui.playamap.MapPalette
 import org.pureagave.zodiac.control.ui.scanlineOverlay
+import org.pureagave.zodiac.control.ui.state.CockpitUiState
 import org.pureagave.zodiac.control.ui.viewmodel.CockpitViewModel
 
 private const val SWEEP_PERIOD_S = 4f
@@ -137,7 +139,7 @@ fun motionTrackerScreen(
                     Modifier
                         .fillMaxWidth()
                         .height(48.dp)
-                        .padding(horizontal = 14.dp),
+                        .padding(start = 14.dp, end = CONCEPT_SWITCHER_CLEARANCE),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
@@ -202,6 +204,7 @@ fun motionTrackerScreen(
                             activeTargetLocation = state.activeDriveTarget?.location,
                             modifier = Modifier.fillMaxHeight().aspectRatio(1f),
                         )
+                        scopeRecenterButton(state, viewModel, theme)
                     }
                     Spacer(Modifier.height(6.dp))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -230,6 +233,7 @@ fun motionTrackerScreen(
                             activeTargetLocation = state.activeDriveTarget?.location,
                             modifier = Modifier.fillMaxHeight().aspectRatio(1f),
                         )
+                        scopeRecenterButton(state, viewModel, theme)
                     }
                     Spacer(Modifier.width(8.dp))
                     Column(
@@ -295,18 +299,29 @@ fun motionTrackerScreen(
             modifier = Modifier.align(Alignment.TopEnd).padding(12.dp),
         )
 
-        recenterButton(
-            followMode = state.followMode,
-            theme = theme,
-            onClick = viewModel::recenterPan,
-            // Raised above the ops footer so it doesn't cover the CAMP readout.
-            modifier = Modifier.align(Alignment.BottomEnd).padding(end = 16.dp, bottom = 58.dp),
-        )
-
         if (devPanelOpen) {
             devControlPanel(state = state, viewModel = viewModel, theme = theme, onClose = { devPanelOpen = false })
         }
     }
+}
+
+/**
+ * The recenter button, in the bottom-right of the scope's own box: beside the
+ * scope in landscape, in the circle's empty corner in portrait. It used to float
+ * over the whole screen and landed on the drive-to bar's ADDR button.
+ */
+@Composable
+private fun BoxScope.scopeRecenterButton(
+    state: CockpitUiState,
+    viewModel: CockpitViewModel,
+    theme: ConceptTheme,
+) {
+    recenterButton(
+        followMode = state.followMode,
+        theme = theme,
+        onClick = viewModel::recenterPan,
+        modifier = Modifier.align(Alignment.BottomEnd),
+    )
 }
 
 /** The M41A scope (bordered circular map with sweep + contacts), sized by [modifier]. */

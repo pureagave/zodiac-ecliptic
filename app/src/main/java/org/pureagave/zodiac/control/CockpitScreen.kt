@@ -24,6 +24,7 @@ import org.pureagave.zodiac.control.core.kiosk.KioskExitCode
 import org.pureagave.zodiac.control.core.kiosk.KioskTapZone
 import org.pureagave.zodiac.control.core.log.RollingFileLog
 import org.pureagave.zodiac.control.core.model.CockpitConcept
+import org.pureagave.zodiac.control.core.ops.streetPopupVisible
 import org.pureagave.zodiac.control.core.ops.sunTimes
 import org.pureagave.zodiac.control.core.telemetry.AudioLevel
 import org.pureagave.zodiac.control.core.telemetry.FleetRosterEntry
@@ -118,7 +119,9 @@ fun cockpitScreen(
                 // crossing, and a second screen flashing the same alerts trains
                 // people to look away from the windscreen.
                 if (!passengerMode) {
-                    state.streetPopup?.let { streetCrossingPopup(theme = ThemeTracker, name = it) }
+                    state.streetPopup
+                        ?.takeIf { streetPopupVisible(state.concept, state.brakeAdvised) }
+                        ?.let { streetCrossingPopup(theme = ThemeTracker, name = it) }
                     state.passingCallout?.let { passingCallout(theme = ThemeTracker, name = it) }
                 }
                 // Deliberately OUTSIDE the !passengerMode guard above (unlike the

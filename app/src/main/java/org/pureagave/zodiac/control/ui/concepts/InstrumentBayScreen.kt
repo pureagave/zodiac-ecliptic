@@ -108,7 +108,8 @@ fun instrumentBayScreen(
                 .border(2.dp, theme.primary),
     ) {
         Column(modifier = Modifier.fillMaxSize().padding(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            navCueBar(cue = state.navCue, theme = theme)
+            // The column's own 8 dp padding already counts toward the clearance.
+            navCueBar(cue = state.navCue, theme = theme, modifier = Modifier.padding(end = CONCEPT_SWITCHER_CLEARANCE - 8.dp))
             // Top strip: live heading-guidance chevron to the active drive-to
             // target (replaced the decorative NOSTROMO/STATION flavour header) —
             // slide + point shows which way to steer to HOME/MAN/TEMPLE/BATH.
@@ -235,14 +236,6 @@ fun instrumentBayScreen(
             modifier = Modifier.align(Alignment.TopEnd).padding(12.dp),
         )
 
-        recenterButton(
-            followMode = state.followMode,
-            theme = theme,
-            onClick = viewModel::recenterPan,
-            // Raised above the ops footer so it doesn't cover the CAMP readout.
-            modifier = Modifier.align(Alignment.BottomEnd).padding(end = 16.dp, bottom = 58.dp),
-        )
-
         if (devPanelOpen) {
             devControlPanel(state = state, viewModel = viewModel, theme = theme, onClose = { devPanelOpen = false })
         }
@@ -301,6 +294,14 @@ private fun bayMapTile(
                         routeColor = theme.secondary,
                     ),
                 modifier = Modifier.fillMaxSize(),
+            )
+            // Inside the map tile, so it can never land on the drive-to bar
+            // (it used to float over the screen and covered ADDR).
+            recenterButton(
+                followMode = state.followMode,
+                theme = theme,
+                onClick = viewModel::recenterPan,
+                modifier = Modifier.align(Alignment.BottomEnd).padding(8.dp),
             )
         }
     }
