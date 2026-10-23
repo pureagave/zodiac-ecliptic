@@ -20,7 +20,7 @@ Burning Man). Its onboard system is called **ECLIPTIC**. Three parts, one system
 **Read first:** [`README.md`](README.md) and [`docs/OVERVIEW.md`](docs/OVERVIEW.md) for what exists,
 [`ARCHITECTURE.md`](ARCHITECTURE.md) for how it is put together,
 [`docs/PROTOCOLS.md`](docs/PROTOCOLS.md) for the wire formats between the parts,
-[`docs/BUILD.md`](docs/BUILD.md) for build/test/deploy, [`SYNC.md`](SYNC.md) top
+[`docs/BUILD.md`](docs/BUILD.md) for build/test/deploy, `SYNC.md` (private dev repo) top
 entries for what just happened.
 
 ## The rule that matters most
