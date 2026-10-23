@@ -118,6 +118,14 @@ HUD shows each one as a contact and warns of a collision course, the passenger
 display counts the souls around the vehicle, and the tracking spotlight swings
 onto the most urgent one.
 
+![Driver HUD: a contact on a collision course, bracketed in red, with BRAKE advised](docs/images/driver-hud-brake.png)
+
+*The DRIVER HUD, built for night driving. People ahead stand on a perspective
+grid, a contact on a collision course is bracketed in red and raises `! BRAKE !`,
+and the ring around the vehicle marker carries every contact in the full circle,
+including those behind and to the sides. The arch at the top points to the
+destination. Contacts here are synthetic (`zvision --source fake`).*
+
 `zvision` reads a FLIR Lepton Ultra Wide thermal camera (160×120, 9 fps,
 through a PureThermal USB board) and USB low-light visible cameras (Sony STARVIS
 IMX462). It turns warm, moving bodies into vehicle-relative contacts with
@@ -153,12 +161,13 @@ Every item below was measured on the bench and is pinned by tests:
   `DMX FAIL` if the kill didn't land.
 
 <p>
-<img src="docs/images/driver-hud-brake.png" width="49%" alt="Driver HUD: collision course, brake advised">
-<img src="docs/images/driver-hud-passing-art.png" width="49%" alt="Driver HUD: entering a street, passing an art piece">
+<img src="docs/images/driver-hud-entering.png" width="49%" alt="Driver HUD: entering the Esplanade with three contacts tracked">
+<img src="docs/images/driver-hud-passing-art.png" width="49%" alt="Driver HUD: passing an art piece, three contacts tracked">
 </p>
 
-*The driver HUD above is fed by `zvision --source fake` (synthetic contacts) and
-a simulated GPS track, so its contacts are not real people.*
+*The DRIVER HUD shots are fed by `zvision --source fake` (synthetic contacts)
+and a simulated GPS track, so their contacts are not real people. A street
+name never covers the collision warning: it is dropped while the warning is up.*
 
 **What's next, honestly:**
 - Today's detector is classical computer vision (OpenCV MOG2 background
@@ -193,8 +202,8 @@ a simulated GPS track, so its contacts are not real people.*
   of field devices, ordering and conflict resolution without a server
 - **Safety-first design:** blind arcs instead of false all-clears, absent data
   never faked, a guaranteed light kill
-- **Engineering discipline:** 1,923 unit tests (`:app` 1,201, `:beacon` 180,
-  `jetson` 542, as of 2026-10-21), many mutation-checked, and CI with ktlint,
+- **Engineering discipline:** 1,932 unit tests (`:app` 1,210, `:beacon` 180,
+  `jetson` 542, as of 2026-10-22), many mutation-checked, and CI with ktlint,
   detekt, Android Lint and both suites
 
 ## Run it

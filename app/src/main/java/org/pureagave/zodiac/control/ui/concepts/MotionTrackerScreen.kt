@@ -196,15 +196,17 @@ fun motionTrackerScreen(
                 // `InstrumentBayScreen`'s already-working portrait treatment.
                 Column(Modifier.weight(1f)) {
                     Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        radarScope(
-                            mapInputs = mapInputs,
-                            viewModel = viewModel,
-                            theme = theme,
-                            sweepDeg = { sweepDeg.floatValue },
-                            activeTargetLocation = state.activeDriveTarget?.location,
-                            modifier = Modifier.fillMaxHeight().aspectRatio(1f),
-                        )
-                        scopeRecenterButton(state, viewModel, theme)
+                        Box(modifier = Modifier.fillMaxHeight().aspectRatio(1f)) {
+                            radarScope(
+                                mapInputs = mapInputs,
+                                viewModel = viewModel,
+                                theme = theme,
+                                sweepDeg = { sweepDeg.floatValue },
+                                activeTargetLocation = state.activeDriveTarget?.location,
+                                modifier = Modifier.fillMaxSize(),
+                            )
+                            scopeRecenterButton(state, viewModel, theme)
+                        }
                     }
                     Spacer(Modifier.height(6.dp))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -225,15 +227,17 @@ fun motionTrackerScreen(
                     trackerStatColumn(pair = bearingSpeed, theme = theme, modifier = Modifier.fillMaxHeight().width(170.dp))
                     Spacer(Modifier.width(8.dp))
                     Box(modifier = Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.Center) {
-                        radarScope(
-                            mapInputs = mapInputs,
-                            viewModel = viewModel,
-                            theme = theme,
-                            sweepDeg = { sweepDeg.floatValue },
-                            activeTargetLocation = state.activeDriveTarget?.location,
-                            modifier = Modifier.fillMaxHeight().aspectRatio(1f),
-                        )
-                        scopeRecenterButton(state, viewModel, theme)
+                        Box(modifier = Modifier.fillMaxHeight().aspectRatio(1f)) {
+                            radarScope(
+                                mapInputs = mapInputs,
+                                viewModel = viewModel,
+                                theme = theme,
+                                sweepDeg = { sweepDeg.floatValue },
+                                activeTargetLocation = state.activeDriveTarget?.location,
+                                modifier = Modifier.fillMaxSize(),
+                            )
+                            scopeRecenterButton(state, viewModel, theme)
+                        }
                     }
                     Spacer(Modifier.width(8.dp))
                     Column(
@@ -306,9 +310,9 @@ fun motionTrackerScreen(
 }
 
 /**
- * The recenter button, in the bottom-right of the scope's own box: beside the
- * scope in landscape, in the circle's empty corner in portrait. It used to float
- * over the whole screen and landed on the drive-to bar's ADDR button.
+ * The recenter button, in the bottom-right corner of the scope's square, the
+ * empty space outside the circle. It used to float over the whole screen and
+ * landed on the drive-to bar's ADDR button.
  */
 @Composable
 private fun BoxScope.scopeRecenterButton(
@@ -320,7 +324,7 @@ private fun BoxScope.scopeRecenterButton(
         followMode = state.followMode,
         theme = theme,
         onClick = viewModel::recenterPan,
-        modifier = Modifier.align(Alignment.BottomEnd),
+        modifier = Modifier.align(Alignment.BottomEnd).padding(8.dp),
     )
 }
 
