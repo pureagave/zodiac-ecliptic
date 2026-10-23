@@ -240,7 +240,7 @@ still builds and runs; the art and camp markers stay hidden.
 I built Zodiac itself, turning a film prop into a working mutant vehicle, and I
 conceived and built ECLIPTIC end to end: what it does, how the parts work
 together, the hardware and components it takes to realise it, and the taste
-behind every screen. I designed the system and its three wire protocols,
+behind every screen. I designed the system and its four wire protocols,
 specified and assembled the edge hardware (Jetson, thermal and visible cameras,
 DMX light, control deck), and wrote the software with AI coding agents working
 under my direction and review.

@@ -111,8 +111,8 @@ python3 -m zvision --record /data/drive-01 --record-hz 1 \
 ```
 
 (`fovref=d` because the Lepton Ultra Wide's quoted 160° is the diagonal — see
-[HARDWARE.md](HARDWARE.md) §1. `--fov-ref` still defaults to `h`, so it has to be
-said explicitly.)
+[HARDWARE.md](HARDWARE.md) §1. `--fov-ref` defaults to `d`, so `fovref=d` here is
+explicit rather than required.)
 
 Writes `<dir>/<camera>/<seconds>.png|jpg` plus an `index.jsonl` line per frame
 carrying the **pixel boxes** the motion detector found:
@@ -195,8 +195,9 @@ blind at 25 m scores well and is useless.
 
 ## What I'd actually do, given the calendar
 
-The event is weeks away and the cameras aren't mounted yet. Being straight
-about it:
+BRC 2026 has passed without zvision running on the vehicle, and the cameras
+are still not mounted. The same order applies for the next event. Being
+straight about it:
 
 1. **Don't gate the event on a trained thermal model.** Training on footage that
    doesn't exist yet, alongside the mechanical build, is not a three-week task.

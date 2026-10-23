@@ -1,6 +1,7 @@
 # zvision — Zodiac edge-box (Jetson) software
 
-Runs on the in-vehicle **Jetson Orin Nano Super**. Turns thermal / RGB camera
+Built for the **Jetson Orin Nano Super** installed in the vehicle (cameras not yet
+mounted; zvision has not yet run on the vehicle). Turns thermal / RGB camera
 frames into vehicle-relative **threat contacts** and broadcasts them on the
 fleet bus, where every tablet's DRIVER night-HUD is already listening. A second,
 optional output drives a **DMX moving-head "tracker" light** that points at those
@@ -59,8 +60,8 @@ real spotlight points.
 
 ## The surround rig (360°)
 
-The vehicle carries one ultra-wide thermal forward plus several RGB cameras
-around the body. Repeat `--camera` once per camera, telling each where it looks
+The planned rig is one ultra-wide thermal forward plus several RGB cameras
+around the body (not yet mounted). Repeat `--camera` once per camera, telling each where it looks
 and what it looks through; `rig.py` fuses them into a single full-circle contact
 list — bearings rotated into vehicle terms, track ids namespaced per camera, and
 the same person seen by two overlapping cameras collapsed to one contact.
@@ -144,14 +145,16 @@ in [DEPLOY.md §8](DEPLOY.md#8-tuning-on-playa-laptop-only--no-keyboard-mouse-or
 | `systemd/zodiac-track.service` | auto-start unit for the breadcrumb recorder |
 | `systemd/zodiac-track-serve.service` | auto-start unit for the CSV HTTP server |
 | `systemd/70-zodiac-streamdeck.rules` | udev rule giving `plugdev` access to the deck |
-| `scripts/install.sh` | copy **`zvision` only** to `/opt/zodiac/jetson`, write `/etc/default/zvision`, enable + start `zvision.service` |
+| `systemd/70-zodiac-thermal.rules` | udev rule pinning the thermal to `/dev/zodiac-thermal` (installed by `install.sh`) |
+| `scripts/install.sh` | copy `zvision` + `zdeck` to `/opt/zodiac/jetson` (skipped when run from a clone already there), install the thermal + Stream Deck udev rules, write `/etc/default/zvision` if absent, enable + start `zvision.service` |
 | `scripts/install-ola.sh` | OLA (`olad`) + `ftdidmx` plugin, CPU-pinned, on-boot |
 | `scripts/preflight-flash.sh` | read-only pre-flash checks on the Linux flash host; `--command` prints the flash command |
 
-> `install.sh` installs **only** `zvision` and **only** `zvision.service`. The
-> deck, track and track-serve units, the udev rule, and the `zdeck` package itself
-> are installed by hand. `zdeck` must end up under `/opt/zodiac/jetson`, because
-> that is the `WorkingDirectory` its unit runs `-m zdeck` from.
+> `install.sh` installs **only** `zvision.service`. The deck, track and
+> track-serve units, the deck's venv, and `/var/lib/zodiac/track` are set up by
+> hand ([DECK.md](DECK.md), §3 of [DEPLOY.md](DEPLOY.md)). `zdeck` must live under
+> `/opt/zodiac/jetson`, the `WorkingDirectory` its unit runs `-m zdeck` from;
+> `install.sh` puts it there.
 
 ## Docs
 

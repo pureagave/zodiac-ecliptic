@@ -84,7 +84,7 @@
 </ol></div>
 </nav>
   <div class="rail-foot">
-    <p>Built from the repository's own Markdown, verified against the code on 2026&#8209;08&#8209;14.</p>
+    <p>Built from the repository's own Markdown, verified against the code on 2026&#8209;10&#8209;23.</p>
     <p>Offline by design — no network requests.</p>
   </div>
 </aside>
@@ -129,11 +129,19 @@ cd jetson &amp;&amp; python3 -m unittest discover -s tests -t .                 
 
 <h3><code>local.properties</code></h3>
 
-<p>Gitignored, and optional. <code>app/build.gradle.kts</code> reads one key from it:</p>
+<p>Gitignored, and optional. The build reads three keys from it:</p>
 
-<pre><code>BM_API_KEY=&lt;burning man api key&gt;</code></pre>
+<pre><code>BM_API_KEY=&lt;burning man api key&gt;
+zodiac.home.lat=&lt;home camp latitude&gt;
+zodiac.home.lon=&lt;home camp longitude&gt;</code></pre>
 
-<p>Absent &mdash; as on CI &mdash; the key compiles to <code>""</code> and the Burning Man discovery
+<p>The two <code>zodiac.home.*</code> keys set HOME &mdash; the &ldquo;return to camp&rdquo; target
+&mdash; for both <code>:app</code> and <code>:beacon</code> (the beacon's GPS test-mode
+<code>HOME</code> preset), via the root <code>build.gradle.kts</code>. Set both or neither: absent,
+HOME is a neutral default (7:30 &amp; E on the 2026 grid); half-set, non-numeric, or outside the
+Black Rock Desert, the build fails rather than ship a fleet pointed at the wrong place.</p>
+
+<p>Absent &mdash; as on CI &mdash; the API key compiles to <code>""</code> and the Burning Man discovery
 fetch fails its HTTP call. That is not fatal: <code>DiscoveryRepository</code> keeps serving whatever
 is in its on-disk cache and logs the failure. Art and camp markers simply never appear.</p>
 
@@ -174,24 +182,24 @@ Fire OS 6/5 (API 25/22) and would need a further drop &mdash; check any candidat
 
 <h2 id="tests">Test counts</h2>
 
-<p>Measured 2026-08-14, all green.</p>
+<p>Measured 2026-10-22, all green.</p>
 
 <div class="tablewrap">
 <table>
 <thead><tr><th>Suite</th><th class="num">Tests</th></tr></thead>
 <tbody>
-<tr><th><code>:app</code></th><td class="num">1008</td></tr>
-<tr><th><code>:beacon</code></th><td class="num">109</td></tr>
-<tr><th><code>jetson</code></th><td class="num">475</td></tr>
+<tr><th><code>:app</code></th><td class="num">1,210</td></tr>
+<tr><th><code>:beacon</code></th><td class="num">180</td></tr>
+<tr><th><code>jetson</code></th><td class="num">542</td></tr>
 </tbody>
 </table>
 </div>
 
 <p>Android tests are JUnit 4 with <code>kotlinx-coroutines-test</code> (<code>runTest</code>,
 <code>advanceUntilIdle</code>) and a <code>MainDispatcherRule</code> <code>TestWatcher</code> for
-dispatcher setup. Four <code>:beacon</code> suites use Robolectric; because
-<code>TelemetryBroadcaster</code> is a process singleton they all stop it and clear the injected GPS
-handle in <code>@After</code>.</p>
+dispatcher setup. Ten <code>:beacon</code> suites use Robolectric; because
+<code>TelemetryBroadcaster</code> is a process singleton, the ones that start it stop it and clear the
+injected GPS handle in <code>@After</code>.</p>
 
 <div class="note">
   <span class="label">The suites are not self-contained &mdash; they need the repository root</span>
@@ -296,11 +304,17 @@ because the service is <code>Restart=always</code> and an unvalidated typo is a 
 
 <h2 id="ci">CI</h2>
 
-<p>Two GitHub Actions workflows, both on push and pull request to <code>main</code>.</p>
+<p>Four GitHub Actions workflows. <code>android-ci</code> and <code>jetson-ci</code> gate push and
+pull request to <code>main</code>; <code>secrets-scan</code> runs gitleaks over the full history on
+every push and PR; <code>pages</code> publishes <code class="path">docs/site</code> to GitHub Pages
+from the public repo only.</p>
 
 <h3><code>android-ci.yml</code></h3>
 
-<p>Ubuntu, JDK 17 (Temurin), Android SDK, the project's Gradle wrapper. Five steps, in order, and
+<p>Ubuntu, JDK 17 (Temurin), Android SDK, the project's Gradle wrapper. <code>setup-android</code>
+is passed <code>packages: platform-tools</code>, because its default list includes the retired
+<code>tools</code> package, which current runner images no longer resolve (AGP fetches the platform
+and build tools it needs). Five steps, in order, and
 <strong>unscoped</strong> so both modules are covered:</p>
 
 <ol>
@@ -333,6 +347,19 @@ workflow file itself. Python 3.11, no install step:</p>
 corpus must re-run the Python half of the contract, not just the Kotlin half.
 <a href="../protocols/golden-corpus.html">Why &rarr;</a></p>
 
+<h3><code>secrets-scan.yml</code></h3>
+
+<p>On every push to <code>main</code> and every PR: a full-history checkout
+(<code>fetch-depth: 0</code>) and gitleaks 8.30.1 (<code>gitleaks git --redact --exit-code 1</code>).
+The public repo is an export with a scrubbed history, and this keeps it that way.</p>
+
+<h3><code>pages.yml</code></h3>
+
+<p>Publishes <code class="path">docs/site</code> as this site through the GitHub Pages actions, on a
+push to <code>main</code> that touches <code class="path">docs/site/**</code> or the workflow, or by
+hand (<code>workflow_dispatch</code>). The job runs only when <code>github.repository</code> is
+<code>pureagave/zodiac-ecliptic</code>; the private development repo has no Pages site.</p>
+
 <h2 id="deploy">Deploying to a tablet</h2>
 
 <pre><code>adb install -r app/build/outputs/apk/debug/app-debug.apk
@@ -346,6 +373,9 @@ adb shell pm grant org.pureagave.zodiac.control android.permission.ACCESS_COARSE
 adb shell pm grant org.pureagave.zodiac.control android.permission.BLUETOOTH_CONNECT
 adb shell pm grant org.pureagave.zodiac.control android.permission.BLUETOOTH_SCAN</code></pre>
 
+<p>The Bluetooth pair exists only from API 31, so on the Fires (API 28 and 30) those two lines fail
+with &ldquo;Unknown permission&rdquo;; they are for the Samsungs.</p>
+
 <p>Screenshot the app framebuffer with <code>adb exec-out screencap -p &gt; out.png</code>. After
 <code>am start</code> the first capture can race the launch transition and catch the home screen
 &mdash; confirm focus with <code>adb shell dumpsys window | grep mCurrentFocus</code>, then
@@ -356,6 +386,9 @@ OLED brightness discipline during testing &mdash; are in
 <a href="../system/devices.html">Devices and roles</a>.</p>
 
 <h2 id="conventions">Repository conventions</h2>
+
+<p><code>SYNC.md</code> and <code>tasks/</code> live only in the private development repo; this public
+tree is a filtered export of it, so they are absent here by design.</p>
 
 <ul>
 <li><strong><code>SYNC.md</code> is append-only.</strong> Anything significant that is decided,

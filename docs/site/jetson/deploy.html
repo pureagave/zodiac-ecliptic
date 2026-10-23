@@ -84,7 +84,7 @@
 </ol></div>
 </nav>
   <div class="rail-foot">
-    <p>Built from the repository's own Markdown, verified against the code on 2026&#8209;08&#8209;14.</p>
+    <p>Built from the repository's own Markdown, verified against the code on 2026&#8209;10&#8209;23.</p>
     <p>Offline by design — no network requests.</p>
   </div>
 </aside>
@@ -289,7 +289,7 @@ run through TensorRT, not OpenCV CUDA.</p>
 
 <h2 id="network">2. Get it on the vehicle network</h2>
 
-<p>Ethernet to the travel router is the most reliable for a fixed roof install. Alternatives: an
+<p>Ethernet to the travel router is the most reliable for a fixed install. Alternatives: an
 Intel AX210 in the M.2 Key-E slot with two antennas, or a USB WiFi dongle.</p>
 
 <div class="note">
@@ -325,10 +325,10 @@ sudo jetson/scripts/install.sh</code></pre>
     <code>--source fake --hz 10</code> &mdash; which means it broadcasts three synthetic contacts,
     one a recurring phantom collision, to every tablet on the network. Fine on a bench; do not leave
     it that way on the vehicle.</li>
-    <li>It copies <strong>only the <code>zvision</code> package</strong> &mdash; not
-    <code>zdeck</code>, not <code>tests</code>.</li>
-    <li>It installs <strong>only <code>zvision.service</code></strong> &mdash; not the deck, track or
-    track-serve units, and not the Stream Deck udev rule.</li>
+    <li>It copies <code>zvision</code> and <code>zdeck</code> (not <code>tests</code>), and only
+    when run from outside <code class="path">/opt/zodiac/jetson</code>.</li>
+    <li>It installs <strong>only <code>zvision.service</code></strong> plus the thermal and Stream
+    Deck udev rules &mdash; not the deck, track or track-serve units.</li>
     <li>It does not create <code class="path">/var/lib/zodiac/track</code>, which the breadcrumb
     logger needs.</li>
   </ul>
@@ -416,7 +416,7 @@ ola_set_dmx -u 0 -d 128,0,128,0,0,0,0,255     # pan/tilt/dimmer test</code></pre
 
 <div class="note bug">
   <span class="label">Do not use the older <code>-d 128,0,128,0,255</code> form</span>
-  <p>It is still printed by <code>install-ola.sh</code>. In the 11-channel mode this fixture runs in,
+  <p>It is the older form, which <code>install-ola.sh</code> printed before it was corrected. In the 11-channel mode this fixture runs in,
   the fifth slot is the <strong>colour wheel</strong>, and 255 there means &ldquo;auto colour change,
   fast&rdquo;. The <strong>dimmer is channel 8</strong>, so that command pans and tilts a head that
   stays dark while spinning colours &mdash; indistinguishable from a dead fixture. The eight values
@@ -467,11 +467,11 @@ sudo systemctl restart zvision &amp;&amp; journalctl -u zvision -f</code></pre>
 <table>
 <thead><tr><th>Symptom</th><th>Cause / fix</th></tr></thead>
 <tbody>
-<tr><th>HUD shows fake demo threats, not the Jetson's</th><td>Tablet is not receiving &mdash; check the same subnet, and that the DRIVER source is network (fake is the fallback when no frames arrive)</td></tr>
+<tr><th>HUD shows the vision feed ABSENT</th><td>Tablet is not receiving <code>ZTHREAT</code> &mdash; check the same subnet and AP client isolation; production tablets never fall back to demo contacts (<code>demoEnabled = false</code>)</td></tr>
 <tr><th>Console shows frames, HUD shows nothing</th><td>Multicast dropped at a router bridge &mdash; the broadcast leg should cover it; verify tablet and Jetson share a /24, check AP client-isolation is <strong>off</strong></td></tr>
 <tr><th><code>-&gt; 0 targets</code> in logs</th><td>No network route yet (<code>network-online.target</code> not reached) &mdash; check <code>ip addr</code>, set <code>--iface-ip</code></td></tr>
 <tr><th><code>could not open camera</code></th><td>Wrong <code>/dev/videoN</code>, or cv2 missing on a non-JetPack box</td></tr>
-<tr><th>Bearings compressed / stretched</th><td><code>--hfov</code> does not match the lens, or <code>--lens</code> has the wrong projection (fisheye = <code>equidistant</code>, ordinary = <code>rectilinear</code>); if the datasheet FOV is a diagonal, add <code>--fov-ref d</code></td></tr>
+<tr><th>Bearings compressed / stretched</th><td><code>--hfov</code> does not match the lens, or <code>--lens</code> has the wrong projection (fisheye = <code>equidistant</code>, ordinary = <code>rectilinear</code>); check <code>--fov-ref</code> (default <code>d</code>; use <code>h</code> if the datasheet FOV is a width)</td></tr>
 <tr><th>One camera's contacts all sit at the wrong bearing</th><td>That camera's <code>az=</code> does not match how it is actually bolted on &mdash; measure it against the nose</td></tr>
 <tr><th>One person shows up twice in a camera overlap</th><td>Raise <code>--merge-deg</code>; lower it if two people standing close together get collapsed into one</td></tr>
 <tr><th><code>no cameras opened</code>, exit 3</th><td>None of the rig's devices enumerated &mdash; check USB power / hub</td></tr>

@@ -1,7 +1,8 @@
 # Wire protocols
 
-The three parts of Zodiac share no code. They agree through two wire formats on
-the fleet bus. This is the byte-level reference for both.
+The three parts of Zodiac share no code. They agree through four wire formats on
+the fleet bus: NMEA telemetry, `ZTHREAT`/`ZCOVER`, `$ZNAV` and `$ZVER`. This is
+the byte-level reference for all four.
 
 > Architecture context: [`../ARCHITECTURE.md`](../ARCHITECTURE.md) §3 (the bus)
 > and §7 (the seams). The ZTHREAT contract additionally has its own
@@ -14,18 +15,25 @@ the fleet bus. This is the byte-level reference for both.
 | | Group | Port | Sender | Receivers |
 |---|---|---|---|---|
 | Telemetry (NMEA) | `239.7.7.10` | `10110` | `:beacon` | every `:app` tablet; `zvision`'s `$ZAUD` listener |
-| Threats (ZTHREAT) | `239.7.7.20` | `10120` | `zvision` | every `:app` tablet |
+| Threats (ZTHREAT) + coverage (ZCOVER, 1 Hz + on change) | `239.7.7.20` | `10120` | `zvision` | every `:app` tablet |
 | Shared nav target (ZNAV) | `239.7.7.30` | `10130` | a nav-authority `:app` tablet | every `:app` tablet |
+| Build version (ZVER) | `239.7.7.40` | `10140` | every node (`:beacon`, every `:app` tablet, `zvision`) | every `:app` tablet (log viewer FLEET tab) |
 
 Multicast TTL is **1** — nothing leaves the vehicle's subnet. `239.0.0.0/8` is
 administratively scoped.
 
 **Every sender transmits each datagram twice**: once to the multicast group and
-once to a subnet-directed broadcast derived from the DHCP netmask (falling back
-to the historical /24 assumption when the device reports no netmask or a
-non-contiguous/garbage one, and further to `255.255.255.255` if the local IP
-cannot be determined at all). Some access points silently drop multicast, and a
-fleet that goes blind because of an AP setting is not acceptable.
+once to a subnet-directed broadcast. Some access points silently drop multicast,
+and a fleet that goes blind because of an AP setting is not acceptable. How the
+broadcast address is found differs by sender:
+
+- **`:beacon`** derives it from the DHCP netmask (`BeaconNet.broadcastTargets`),
+  falling back to the historical /24 assumption when the device reports no
+  netmask or a non-contiguous/garbage one, and to `255.255.255.255` when there
+  is no lease yet.
+- **`:app`** (`$ZNAV`, `$ZVER`) assumes /24 (`core/net/FleetSendTargets.kt`),
+  falling back to `255.255.255.255` before a lease.
+- **`zvision`** assumes /24 (`broadcaster.py` `subnet_broadcast`).
 
 **Every receiver binds the wildcard address** on the port *and* joins the group,
 so it gets whichever copy arrives. The consequence is duplicate delivery — which
@@ -81,6 +89,9 @@ hands over a message with no trailing newline.
 
 The broadcaster also *sniffs* passing GGA sentences for fix quality and satellite
 count to populate `$ZBCN`, but does not alter them.
+
+While GPS test mode is armed (§2.13) the passthrough is **suppressed entirely**:
+no real GNSS sentence is forwarded or sniffed.
 
 ### 2.3 Sentences the tablet consumes
 
@@ -310,7 +321,8 @@ on the first tick.
 | Channel | Trigger | Effective rate |
 |---|---|---|
 | raw GNSS | OS NMEA callback | whatever the receiver emits (requested ≥ 1 Hz) |
-| `$GPHDT` | every tick, if heading available | ~4 Hz |
+| `$GPHDT` | every tick, if heading available (the sim heading while GPS test mode is armed) | ~4 Hz |
+| `$GPGGA` / `$GPRMC` (GPS test mode only) | every 4th tick while armed | ~1 Hz |
 | `$ZTLM` | every tick | ~4 Hz |
 | `$ZENV` | every 8th tick, if lux available | ~0.5 Hz |
 | `$ZODO` | every 8th tick | ~0.5 Hz |
@@ -321,6 +333,45 @@ on the first tick.
 There is **no throttling, deduplication or change-detection** beyond these
 divisors. An unchanged value is re-broadcast identically, which is what makes the
 stream self-healing for a tablet that just joined the network.
+
+`$ZVER` (§6) is not on this loop: `VersionBroadcaster` sends it on its own
+socket to `239.7.7.40:10140` every 10 s.
+
+### 2.13 GPS test mode
+
+The one sanctioned fabrication, for fleet-wide location testing
+(`GpsSim.kt`, `SimGpsReceiver.kt`). It is armed and disarmed only over adb; the
+receiver is context-registered by the running service and guarded by
+`android.permission.DUMP`, which the adb shell holds and ordinary apps do not.
+All extras are strings (`--es`), so a malformed number rejects the whole command
+instead of silently defaulting:
+
+```
+adb shell am broadcast -a org.pureagave.zodiac.beacon.SIM_GPS --es preset MAN
+adb shell am broadcast -a org.pureagave.zodiac.beacon.SIM_GPS --es lat 40.78325 --es lon -119.20788 --es hdg 90 --es spd 8
+adb shell am broadcast -a org.pureagave.zodiac.beacon.SIM_GPS --es hdg 180 --es spd 8   # turn from the current sim position
+adb shell am broadcast -a org.pureagave.zodiac.beacon.SIM_GPS_OFF
+```
+
+Presets are `MAN`, `TEMPLE` and `HOME`; speed is bounded to 0–160 kph. Position
+is dead-reckoned as a pure function of elapsed wall-clock time from the arm
+command, so it never drifts.
+
+While armed:
+
+| Channel | Behaviour |
+|---|---|
+| raw GNSS (§2.2) | suppressed — not forwarded, not sniffed into `$ZBCN` |
+| `$GPGGA` | synthesized every 4th tick (~1 Hz): fix quality **`8`** (NMEA "Simulation mode"), 12 satellites, HDOP 0.8, altitude 1191.0 m (a chosen value, not a measurement) |
+| `$GPRMC` | synthesized on the same tick, carrying the sim speed and heading |
+| `$GPHDT` | every tick, from the sim heading instead of the compass |
+| `$ZTLM` | speed field is the sim speed; pitch and roll stay real |
+| `$ZBCN` | reports quality `8` / 12 satellites, so every tablet can see the fix is simulated |
+| `$ZODO` | unaffected: the odometer is fed only by real location updates, so it never accumulates simulated metres |
+
+The armed state is **memory-only**: never persisted, cleared on service start
+and stop, so a reboot always restores real GNSS. The beacon's own screen shows a
+red `⚠ GPS SIMULATED` banner for as long as it is armed.
 
 ---
 
@@ -534,9 +585,9 @@ compute ±64° by default and agree without anyone remembering a flag.
 
 **Confirmed by measurement, not argument:** a cold target at a true 40.4° was
 reported at 42.5° (implying a ~61° horizontal half-FOV); the horizontal reading
-would have reported 32.3°. The historical note below is kept so that anyone
-reading a bearing off the bus knows the edge values are unverified until it is
-resolved.
+would have reported 32.3°. The ~5 % residual (61° measured vs 64° assumed) is
+within measurement error; the full history is on the docs site's
+field-of-view discrepancy page (`docs/site/protocols/fov-discrepancy.html`).
 
 ---
 
@@ -544,7 +595,7 @@ resolved.
 
 `239.7.7.30` : `10130`. Single-language, `:app`-only — no golden corpus, no
 cross-language drift risk (§3 doesn't apply). Builder + parser both live in
-`core/ops/NavShareProtocol.kt`; the Lamport ordering + ownership state machine
+`core/ops/NavShare.kt` (`object NavShareProtocol`); the Lamport ordering + ownership state machine
 is `core/ops/NavShareArbiter.kt`, kept separate and pure (no I/O) from the
 send/receive plumbing (`data/nav/NavShareSender.kt`,
 `data/nav/NavShareReceiver.kt`).
@@ -679,3 +730,51 @@ its own authority, mirroring `NetworkLocationSource`'s hardened listener
 failure). Unlike GPS, silence is `$ZNAV`'s normal idle state — no owner means
 no traffic — so the periodic rebuild-on-silence exists purely to survive an
 AP failover mid-idle, not to detect a dead feed.
+
+---
+
+## 6. `ZVER` — build version (every node → `:app`)
+
+`239.7.7.40` : `10140`. Each node announces which build it is running, so the
+hero tablet can spot a stale node without SSH or a server. The tablets show the
+roster in the on-device log viewer's FLEET tab.
+
+```
+$ZVER,<node>,<name>,<base>,<sha>,<dirty>,<epoch>*CC
+e.g. $ZVER,9C1977,SM-X810,0.1.0,8f531e18a,0,1691900000*CC
+```
+
+NMEA-style framing like `$ZNAV`: US-ASCII, `$<BODY>*<CC>\r\n`, a
+two-hex-uppercase XOR checksum over the body. Exactly seven comma-separated
+fields including the header, every field pinned by an explicit regex:
+
+| Field | Grammar | Meaning |
+|---|---|---|
+| `node` | `[A-Z0-9]{1,8}` | stable per-node key: the last 6 of `ANDROID_ID` on a tablet; the sanitized `ANDROID_ID` (last 8) on the beacon; the last 6 of `/etc/machine-id` on the Jetson |
+| `name` | `[A-Za-z0-9._-]{1,16}` | human label: device model, or the Jetson's hostname |
+| `base` | `[0-9A-Za-z.+~-]{1,16}` | version name, e.g. `0.1.0` |
+| `sha` | `[0-9a-f]{7,40}` or `unknown` | build commit |
+| `dirty` | `[01]` | `1` = built from a modified tree, or unknown |
+| `epoch` | `[0-9]{1,10}` | commit time, Unix seconds (`0` when unknown) |
+
+The parser accepts a checksum of one or two hex digits in either case and never
+throws: any malformation returns null. Builders sanitize their inputs so the
+emitted sentence always parses back. **Every unknown fails toward
+`unknown`/dirty**: a node that cannot identify its build must never read as a
+confident current one.
+
+Three hand-written implementations, none authoritative:
+
+| Where | File | Role |
+|---|---|---|
+| `:app` | `core/telemetry/FleetVersion.kt` (`FleetVersionProtocol`); sent by `data/fleet/FleetVersionSender.kt`, received by `FleetVersionReceiver.kt` | build + parse |
+| `:beacon` | `Nmea.zver()`, sent by `VersionBroadcaster.kt` | build only |
+| `zvision` | `zvision/version_protocol.py`, identity from `version_report.py` | build + parse |
+
+Every sender re-broadcasts every **10 s**, so a node that just joined learns the
+roster within one period. A peer unheard for 35 s (about three and a half
+missed periods) reads OFFLINE; the roster is re-evaluated every 5 s.
+
+The shared truth is the golden corpus `protocol/version-protocol-golden.json`
+(6 format vectors, 22 parse vectors), generated by `protocol/gen-version-golden.py`
+and read by all three test suites. See [`../protocol/README.md`](../protocol/README.md).

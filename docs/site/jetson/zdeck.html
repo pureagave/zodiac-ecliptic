@@ -84,7 +84,7 @@
 </ol></div>
 </nav>
   <div class="rail-foot">
-    <p>Built from the repository's own Markdown, verified against the code on 2026&#8209;08&#8209;14.</p>
+    <p>Built from the repository's own Markdown, verified against the code on 2026&#8209;10&#8209;23.</p>
     <p>Offline by design — no network requests.</p>
   </div>
 </aside>
@@ -191,7 +191,7 @@ liveness of the process being overridden).</p>
 protocol with a fake (<code>surface.py</code>), and the vendor library isolated in one file
 (<code>hardware.py</code>) &mdash; so CI needs neither the library nor a deck. <code>DeckConfig</code>
 rejects amber colour slots and auto-spin wheel values <em>at construction</em>, and
-<code>DeckModel.channels()</code> refuses to emit a frame touching a forbidden channel. 42 tests,
+<code>DeckModel.channels()</code> refuses to emit a frame touching a forbidden channel. 59 tests,
 mutation-verified.</p>
 
 <h2 id="install">Install</h2>
@@ -215,13 +215,13 @@ sudo cp jetson/systemd/zodiac-deck.service /etc/systemd/system/
 sudo systemctl daemon-reload &amp;&amp; sudo systemctl enable --now zodiac-deck</code></pre>
 
 <div class="note">
-  <span class="label">The <code>cp -r jetson/zdeck</code> step is not optional and nothing else does it</span>
+  <span class="label">The <code>cp -r jetson/zdeck</code> step is only for a by-hand setup</span>
   <p><code>zodiac-deck.service</code> runs <code>-m zdeck</code> with
-  <code>WorkingDirectory=/opt/zodiac/jetson</code>, but <code>scripts/install.sh</code> copies only
-  the <code>zvision</code> package and <code>pyproject.toml</code> packages only <code>zvision</code>.
-  On a plain <code>git clone</code> to <code class="path">/opt/zodiac</code> it happens to work
-  because the checkout is already there; on an <code>install.sh</code>-from-elsewhere box it fails
-  with <code>ModuleNotFoundError: zdeck</code>. Re-copy after every update.</p>
+  <code>WorkingDirectory=/opt/zodiac/jetson</code>. <code>scripts/install.sh</code> copies
+  <code>zdeck</code> there along with <code>zvision</code>, and a plain <code>git clone</code> to
+  <code class="path">/opt/zodiac</code> already has it, so the copy is needed only when you set up the
+  deck by hand without running <code>install.sh</code>. The deck's venv and its StreamDeck/Pillow
+  dependencies are still set up by hand.</p>
 </div>
 
 <div class="note">
@@ -244,7 +244,7 @@ sudo systemctl daemon-reload &amp;&amp; sudo systemctl enable --now zodiac-deck<
 <tr><th>Watchdog</th><td>No <code>WatchdogSec</code> / <code>sd_notify</code>. A loop wedged inside a blocking vendor USB call looks healthy to systemd forever. <code>Type=notify</code> + <code>WatchdogSec</code> has the nice property that a hang becomes a kill, which runs <code>ExecStopPost</code>, which parks &mdash; it fails <em>dark</em>.</td></tr>
 <tr><th>Startup slew</th><td><code>start()</code> publishes immediately with pan/tilt 128/128, so every service restart physically slews the head to centre unprompted. Harmless on a bench, rude on a vehicle, and it would stomp the tracker's aim once arbitration exists.</td></tr>
 <tr><th>BLACKOUT and LAMP-off are the same operation</th><td>So one of six keys is redundant. Suggestion: make BLACKOUT a <em>latched</em> KILL that holds against the tracker and needs a deliberate release &mdash; which is also what the arbitration latch wants.</td></tr>
-<tr><th><code>ExecStopPost</code> arg drift</th><td><code>ZDECK_ARGS</code> can set <code>--dmx-universe</code> / <code>--dmx-url</code> but <code>ExecStopPost</code> parks universe 0 at the default URL. Same latent mismatch in <code>zvision.service</code>. Harmless with one universe; note it in the env file.</td></tr>
+<tr><th><code>ExecStopPost</code> arg drift</th><td><strong>Fixed:</strong> both units now park with <code>--from-args-env</code>, which reads the service&rsquo;s own <code>ZDECK_ARGS</code> / <code>ZVISION_ARGS</code>, so the park goes to the universe and URL the service actually used.</td></tr>
 <tr><th>Night discipline</th><td>The keys are backlit LCDs. Brightness way down, dim icons, and ideally follow the same <code>$ZENV</code> lux auto-dim the tablets already use.</td></tr>
 </tbody>
 </table>

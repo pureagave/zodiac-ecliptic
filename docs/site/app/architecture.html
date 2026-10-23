@@ -84,7 +84,7 @@
 </ol></div>
 </nav>
   <div class="rail-foot">
-    <p>Built from the repository's own Markdown, verified against the code on 2026&#8209;08&#8209;14.</p>
+    <p>Built from the repository's own Markdown, verified against the code on 2026&#8209;10&#8209;23.</p>
     <p>Offline by design — no network requests.</p>
   </div>
 </aside>
@@ -145,7 +145,7 @@ naming the device, API level, active BRC year and log path.</p>
 <h2 id="vm">The ViewModel and its delegates</h2>
 
 <p><code>ui/viewmodel/</code> is five files. <code>CockpitViewModel</code>
-(<span class="val">~536</span> lines, <span class="val">20</span> public functions) owns the single
+(<span class="val">~630</span> lines, <span class="val">20</span> public functions) owns the single
 <code>MutableStateFlow&lt;CockpitUiState&gt;</code>, the flow subscriptions, and the vehicle-command
 actions. It constructs and delegates to four controllers that share that state handle.</p>
 
@@ -187,9 +187,9 @@ bounded by the same rules.</p>
 
 <h2 id="state">CockpitUiState</h2>
 
-<p>One immutable data class of <span class="val">37</span> fields, updated with <code>.copy()</code>.
+<p>One immutable data class of <span class="val">42</span> fields, updated with <code>.copy()</code>.
 That is a known cost &mdash; a per-frame field change copies the whole state &mdash; tracked as item
-A5 in <code class="path">tasks/open.md</code>.</p>
+A5 in the development backlog.</p>
 
 <div class="note">
   <span class="label">Why it stays one flow</span>
@@ -272,7 +272,7 @@ flip is one hidden-panel action.</li>
 </ul>
 
 </div>
-<p class="srcnote"><b>Converted from</b><br><code>ARCHITECTURE.md &sect;4.1&ndash;4.4, &sect;4.9, &sect;4.13</code> &middot; <code>tasks/open.md</code> &middot; <code>SYNC.md 2026-08-10</code></p>
+<p class="srcnote"><b>Converted from</b><br><code>ARCHITECTURE.md &sect;4.1&ndash;4.4, &sect;4.9, &sect;4.13</code> &middot; <code>tasks/open.md</code> (private dev repo) &middot; <code>SYNC.md 2026-08-10</code> (private dev repo)</p>
 
 <nav class="pager" aria-label="Page navigation"><a class="prev" href="../app/concepts.html"><span class="pager-dir">Previous</span><span class="pager-name">The three concepts</span></a><a class="next" href="../app/gps.html"><span class="pager-dir">Next</span><span class="pager-name">GPS sourcing</span></a></nav>
   </article>

@@ -12,7 +12,7 @@ repository [`README.md`](../README.md) for what the system is.
 | [`../FIELD-NOTES.md`](../FIELD-NOTES.md) | What the hardware taught us, measured |
 | [`../ARCHITECTURE.md`](../ARCHITECTURE.md) | How all three codebases are layered, and where the seams are |
 | [`BUILD.md`](BUILD.md) | How to build, test and deploy each part; the exact CI gates |
-| [`PROTOCOLS.md`](PROTOCOLS.md) | The wire formats between the parts — NMEA sentences and `ZTHREAT` |
+| [`PROTOCOLS.md`](PROTOCOLS.md) | The wire formats between the parts — NMEA sentences, `ZTHREAT`/`ZCOVER`, `$ZNAV` and `$ZVER` |
 | [`DEVICES.md`](DEVICES.md) | Which device plays which role, and the per-device gotchas |
 
 ## Operations

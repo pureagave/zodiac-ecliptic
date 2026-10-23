@@ -40,7 +40,7 @@ and DMX arbitration between `zvision` and `zodiac-deck` is **unresolved** — se
 ## 0. What you're building
 
 ```
- Lepton 3.5 (thermal) ─┐
+ Lepton UW (thermal)  ─┐
                        ├─UVC /dev/videoN─▶  Jetson: zvision  ─▶ ZTHREAT/UDP ─▶ tablets' DRIVER HUD
  USB webcam (daytime) ─┘                    (this repo)          239.7.7.20:10120
 ```
@@ -232,7 +232,7 @@ Ethernet **is** needed right after the flash — that's how you reach the box.
 
 ## 2. Get it on the vehicle network
 
-Pick one. Ethernet is the most reliable for a fixed roof install.
+Pick one. Ethernet is the most reliable for a fixed install.
 
 - **Wired (recommended):** RJ45 → travel router. Nothing else to do.
 - **M.2 WiFi:** fit an Intel AX210 in the M.2 Key-E slot + two antennas, then
@@ -275,10 +275,12 @@ Note what `install.sh` actually does, because it is less than it sounds:
   until you edit that file, which means it will broadcast three synthetic
   contacts, one of them a recurring phantom collision, to every tablet on the
   network. Fine on a bench; do not leave it that way on the vehicle.
-- it copies **only the `zvision` package** — not `zdeck`, not `tests`.
-- it installs **only `zvision.service`** — not `zodiac-deck.service`,
-  `zodiac-track.service`, `zodiac-track-serve.service` or the Stream Deck udev
-  rule. Those are installed by hand (see [DECK.md](DECK.md) for the deck).
+- it copies `zvision` and `zdeck` (not `tests`), and only when run from outside
+  `/opt/zodiac/jetson`.
+- it installs **only `zvision.service`** plus the thermal and Stream Deck udev
+  rules — not `zodiac-deck.service`, `zodiac-track.service` or
+  `zodiac-track-serve.service`. Those are installed by hand (see
+  [DECK.md](DECK.md) for the deck).
 - it does not create `/var/lib/zodiac/track`, which the breadcrumb logger needs.
 
 ### Credentials: none live on this box
@@ -366,9 +368,10 @@ the HUD.
 `--hfov` must match your lens (Lepton **Ultra Wide** = 160°, the default) and
 `--lens` its projection — `equidistant` for a fisheye like the UW,
 `rectilinear` for an ordinary lens like the RGB modules. Together they set the
-angle mapping, so calibrate if bearings look compressed or stretched. If your
-lens' quoted FOV is a *diagonal* rather than a width, say so with `--fov-ref d`;
-on a wide lens over a near-square sensor the two differ by tens of degrees.
+angle mapping, so calibrate if bearings look compressed or stretched. `--fov-ref`
+defaults to `d` (diagonal, how fisheyes are specified); for a lens whose quoted
+FOV is a width, pass `--fov-ref h` (or `fovref=h` per camera). On a wide lens
+over a near-square sensor the two differ by tens of degrees.
 
 **Sanity check it physically.** Stand at a known bearing (say 45° off the nose,
 paced out on the ground) and confirm the console's `rel_az` agrees. Do it once
@@ -397,6 +400,8 @@ before you go hunting for contacts that were never visible:
     port-aft: rgb /dev/video4 az=-120° fov=90°h rectilinear -> covers -165°..-75°
   blind: +166°..+195°
 ```
+(That transcript predates the 2026-08-10 `--fov-ref d` default; the same
+thermal now prints `fov=160°d … covers -64°..+64°`.)
 Measure each camera's `az` against the vehicle's actual nose, not by eye — an
 error there rotates every contact from that camera and swings the tracker light
 onto the wrong person. A camera that won't open (or dies mid-run) costs you its
@@ -433,7 +438,7 @@ ola_set_dmx -u 0 -d 128,0,128,0,0,0,0,255     # pan/tilt/dimmer test — head ce
 ```
 
 > **Do not use `-d 128,0,128,0,255` for this** — the older form of this command,
-> still printed by `install-ola.sh`. In the 11-channel mode this fixture runs in,
+> which `install-ola.sh` printed before it was corrected. In the 11-channel mode this fixture runs in,
 > the fifth slot is the **colour wheel**, and 255 there means "auto colour change,
 > fast". The **dimmer is channel 8**, so that command pans and tilts a head that
 > stays dark while spinning colours — indistinguishable from a dead fixture, and
@@ -573,31 +578,17 @@ python3 -m zvision --check --min-area 0.008 \
 
 ### If `flashhost` itself is down
 
-Everything above depends on it, so know the recovery path before you need it.
-`flashhost` has **no serial console** (its `/dev/ttyS*` are 8250 driver stubs, no real
-UART) — a console means HDMI + USB keyboard.
-
-| symptom | do this |
-|---|---|
-| router/WiFi dead, flashhost otherwise fine | **direct cable to the spare NIC `enp2s0`** — set the laptop to `192.168.99.2/24`, then `ssh zodiac@192.168.99.1`. Works with router, WiFi and Tailscale all dead. |
-| won't boot / stuck early | HDMI monitor + USB keyboard. `Ctrl+Alt+F3` for a text TTY (it boots to `graphical.target`). |
-| unclean shutdown (vehicle power) | should self-heal — `fsck.repair=yes` is in the GRUB cmdline so it auto-repairs instead of waiting at an interactive prompt. Confirm with `cat /proc/cmdline`. |
-
-The rescue NIC is the Ethernet port whose MAC ends **`:7a:b5`** (the camp port is
-`:7a:b2`); `sudo ethtool -p enp2s0` blinks its LED. Boot-config changes, backups
-and rollback commands are recorded **on the box** at
-`/root/zodiac-hardening-backup-*/CHANGES.md` — a separate Claude instance
-manages that station, so changes get logged there as well as here.
+Recovering the flashing station itself is covered in the private operator notes.
 
 ## Troubleshooting
 
 | symptom | cause / fix |
 |---|---|
-| HUD shows fake demo threats, not the Jetson's | tablet isn't receiving — check same subnet, and that the DRIVER source is network (fake is the fallback when no frames arrive) |
+| HUD shows the vision feed ABSENT | tablet isn't receiving `ZTHREAT` — check same subnet and AP client isolation; production tablets never fall back to demo contacts (`demoEnabled = false`) |
 | Console shows frames, HUD shows nothing | multicast dropped at router bridge — broadcast leg should cover it; verify tablet and Jetson share a `/24`, check AP client-isolation is **off** |
 | `-> 0 targets` in logs | no network route yet (`network-online.target` not reached) — check `ip addr`, set `--iface-ip` |
 | `could not open camera` | wrong `/dev/videoN` (`v4l2-ctl --list-devices`), or cv2 missing on a non-JetPack box (`pip install opencv-python numpy`) |
-| bearings compressed/stretched | `--hfov` doesn't match the lens, or `--lens` has the wrong projection (fisheye = `equidistant`, ordinary = `rectilinear`); if the datasheet FOV is a diagonal, add `--fov-ref d` |
+| bearings compressed/stretched | `--hfov` doesn't match the lens, or `--lens` has the wrong projection (fisheye = `equidistant`, ordinary = `rectilinear`); check `--fov-ref` (default `d`; use `h` if the datasheet FOV is a width) |
 | one camera's contacts all sit at the wrong bearing | that camera's `az=` doesn't match how it's actually bolted on — measure it against the nose |
 | one person shows up twice in a camera overlap | raise `--merge-deg`; lower it if two people standing close together get collapsed into one |
 | `no cameras opened`, exit 3 | none of the rig's devices enumerated — `v4l2-ctl --list-devices`, check USB power/hub |

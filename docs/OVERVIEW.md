@@ -27,9 +27,10 @@ treated as unreliable; nothing safety-relevant depends on it.
 | **`:beacon`** — Zodiac Beacon | Kotlin, headless | one Android phone | The vehicle's sensor hub. Reads GNSS, compass, IMU, mic level, ambient light, shock and battery, and broadcasts them as NMEA over UDP multicast to the whole fleet. |
 | **`jetson/`** — `zvision` + `zdeck` | Python 3 | Jetson Orin Nano Super | The edge box. A ring of cameras → one full-circle threat list on the fleet bus, plus a DMX moving-head tracker light and a six-key Stream Deck control surface. |
 
-They share no code. They agree through three documented wire formats — NMEA
-sentences (beacon → fleet), `ZTHREAT` frames (Jetson → fleet), and `$ZNAV`
-nav-share (tablet ↔ tablet) — all pinned by tests, see
+They share no code. They agree through four documented wire formats — NMEA
+sentences (beacon → fleet), `ZTHREAT` frames (Jetson → fleet), `$ZNAV`
+nav-share (tablet ↔ tablet) and `$ZVER` build versions (every node → fleet) —
+all pinned by tests, see
 [`docs/PROTOCOLS.md`](PROTOCOLS.md).
 
 ```
@@ -42,7 +43,7 @@ nav-share (tablet ↔ tablet) — all pinned by tests, see
                                                   ▼                  │ ZTHREAT
                                         ┌─────────────────┐          ▼
                                         │  :app tablets   │◀── 239.7.7.20:10120
-                                        │  (8–10 of them) │    + subnet broadcast
+                                        │ (four, today)   │    + subnet broadcast
                                         └───────┬─────────┘
                                                 │ $ZNAV 239.7.7.30:10130       │ DMX (via olad)
                                                 └─▶ shared drive-to target     ▼
@@ -51,7 +52,8 @@ nav-share (tablet ↔ tablet) — all pinned by tests, see
 
 The tablets also share one piece of state among *themselves* — the drive-to
 destination — over a third bus, `$ZNAV` (239.7.7.30:10130). A fourth,
-`$ZVER` (239.7.7.40:10140), is being added for fleet build-version reporting.
+`$ZVER` (239.7.7.40:10140), carries each node's build version: every tablet,
+the beacon and `zvision` send it, and the log viewer's FLEET tab shows the roster.
 
 ---
 
@@ -80,9 +82,9 @@ Full detail, including why each role is on the hardware it is on, in
 |---|---|---|---|
 | Hero dashboard | Galaxy Tab S9+ (`SM-X810`), 12.4" OLED | `:app`, RADAR or MAP | In use |
 | Driver night display | Galaxy A54 (`SM-A546V`), OLED | `:app`, DRIVER concept | HUD built; on-vehicle night legibility check outstanding |
-| Passenger / crew displays | Fire HD 10 (`KFTUWI`) and other tablets, LCD | `:app`, passenger carousel or RADAR/MAP | In use; the Fire is the performance floor |
-| Sensor hub | XCover Pro (`SM-G715U`), screen off | `:beacon` | Built, GPS + compass verified end-to-end |
-| Vision edge box | Jetson Orin Nano Super | `zvision` | Software built and tested; thermal + RGB cameras now connected and streaming on the box; permanent ring, on-vehicle mount/aim and a trained detector still to come |
+| Passenger / crew displays | 2× Fire HD 10 (`KFMAWI`, `KFTUWI`), LCD | `:app`, passenger carousel or RADAR/MAP | In use; the Fire is the performance floor |
+| Sensor hub | XCover Pro (`SM-G715U`), screen off | `:beacon` | Built, GPS + compass verified end-to-end; ran on the vehicle at BRC 2026 |
+| Vision edge box | Jetson Orin Nano Super | `zvision` | Software built and tested; thermal + RGB cameras connected and streaming on the box on the bench. The box is installed in the vehicle; the cameras are not yet mounted and `zvision` has not run on the vehicle. Permanent ring, aim and a trained detector still to come |
 | Light control surface | Elgato Stream Deck Mini (`0fd9:0063`) | `zdeck` | Built and driven on the real deck |
 | Tracker light | DMX moving head + FTDI USB-DMX | driven by `zvision` / `zdeck` via `olad` | Fixture characterised on the bench; on-vehicle aim calibration outstanding |
 | Network | travel router (AP + DHCP) | — | In use |
@@ -205,12 +207,14 @@ presentational — all three read the same state.
   the thermal/mode/link readouts they feed are scaffolding for a vehicle bus that
   does not exist yet. Real vehicle data reaches the app **only** through
   `NetworkLocationSource` (NMEA) and `NetworkThreatSource` (ZTHREAT).
-- Two MAP tiles render hard-coded literals: the cell gauges (`CELL A 70%`,
-  `CELL B 45%`) and the throttle trace. They are not wired to anything.
+- MAP's CELL B gauge is a static, visibly dimmed Victron placeholder (50%,
+  `VEHICLE PENDING`) until the GX feed lands. CELL A is this device's real
+  battery and the throttle trace is a real 30-min speed history.
 - `CockpitUiState.tiltDeg` is persisted and clamped but the renderer applies a
   compile-time 45° instead — a runtime `rotationX` would not render in that
   `graphicsLayer` on the S9+.
-- No automated coverage of the map touch interaction (drag / pinch / twist).
+- Pinch/twist math (`PinchSession`, `MapGestureMath`) is unit-tested; the
+  pointer-event plumbing around it is not.
 
 ---
 
@@ -321,8 +325,8 @@ output defaults to `none`. See [`jetson/DECK.md`](../jetson/DECK.md).
 
 | | Built & verified | Built, not yet proven on the vehicle | Not built |
 |---|---|---|---|
-| **`:app`** | all three concepts, playa map, routing, shared `$ZNAV` destination (verified device-to-device), GPS sourcing incl. NET, burn-in, kiosk (incl. auto-relaunch after reboot), logging, passenger display | 2026 base-map address check on-device | real vehicle transports |
-| **`:beacon`** | GPS + compass end-to-end; all seven sentence types under test | the five sensor channels in a moving vehicle | production Pi + u-blox hub |
+| **`:app`** | the hero cockpit ran on the vehicle at BRC 2026 (on its own GNSS after the on-site GPS fix); all three concepts, playa map, routing, shared `$ZNAV` destination (verified device-to-device), GPS sourcing incl. NET, burn-in, kiosk (incl. auto-relaunch after reboot), logging, passenger display | 2026 base-map address check on-device | real vehicle transports |
+| **`:beacon`** | GPS + compass end-to-end; ran on the vehicle at BRC 2026; all seven sentence types under test | the five sensor channels in a moving vehicle | production Pi + u-blox hub |
 | **`jetson/`** | ZTHREAT bus with `--source fake`; thermal + RGB cameras streaming on the box; boot-wedge self-heal proven on hardware; DMX fixture characterised; Stream Deck driven on real hardware | tracker aim calibration; the permanent multi-camera ring on the vehicle | trained detector, DMX arbitration between tracker and deck, proximity alarm |
 
 ---
@@ -340,8 +344,8 @@ Detail, including exact CI gates and deploy commands, in
 cd jetson && python3 -m unittest discover -s tests -t .
 ```
 
-Measured 2026-08-14, all green: **`:app` 1008 tests**, **`:beacon` 109**,
-**`jetson` 475**.
+Measured 2026-10-22, all green: **`:app` 1,210 tests**, **`:beacon` 180**,
+**`jetson` 542** (1,932 total).
 
 CI runs on push and PR to `main`:
 
@@ -349,6 +353,9 @@ CI runs on push and PR to `main`:
   assembleDebug, unscoped so both `:app` and `:beacon` are covered.
 - `.github/workflows/jetson-ci.yml` — path-filtered to `jetson/**` and
   `protocol/**`; runs the Python suite plus a one-frame emit check.
+- `.github/workflows/secrets-scan.yml` — gitleaks over the full history.
+- `.github/workflows/pages.yml` — publishes `docs/site` to GitHub Pages (public
+  repo only).
 
 ---
 

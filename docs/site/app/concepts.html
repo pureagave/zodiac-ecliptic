@@ -84,7 +84,7 @@
 </ol></div>
 </nav>
   <div class="rail-foot">
-    <p>Built from the repository's own Markdown, verified against the code on 2026&#8209;08&#8209;14.</p>
+    <p>Built from the repository's own Markdown, verified against the code on 2026&#8209;10&#8209;23.</p>
     <p>Offline by design — no network requests.</p>
   </div>
 </aside>
@@ -116,10 +116,11 @@ why RADAR is the worst case for
 tiles carrying a heading dial, a speed gauge, a ground-track map, and cell and throttle gauges.</p>
 
 <div class="note absent">
-  <span class="label">Two tiles are literals</span>
-  <p>The cell gauges (<code>CELL A 70%</code>, <code>CELL B 45%</code>) and the throttle trace are
-  hard-coded in the composable. They are not wired to anything, because the vehicle bus that would
-  feed them does not exist.</p>
+  <span class="label">One tile is a placeholder</span>
+  <p><code>CELL B</code> is a static, visibly dimmed Victron placeholder (<span class="val">50%</span>,
+  <code>VEHICLE PENDING</code>) until the GX feed lands. <code>CELL A</code> is this device's real
+  battery (<code>DeviceBatterySource</code>), and the throttle trace is a real 30-minute speed
+  history.</p>
 </div>
 
 <h2 id="shared">What RADAR and MAP share</h2>

@@ -84,7 +84,7 @@
 </ol></div>
 </nav>
   <div class="rail-foot">
-    <p>Built from the repository's own Markdown, verified against the code on 2026&#8209;08&#8209;14.</p>
+    <p>Built from the repository's own Markdown, verified against the code on 2026&#8209;10&#8209;23.</p>
     <p>Offline by design — no network requests.</p>
   </div>
 </aside>
@@ -132,8 +132,7 @@ its host language's numeric parser. Three of the ten:</p>
     <li>Kotlin's float parser accepts Java <em>source</em> syntax, including hex floats &mdash; so
     <code>0x1p3</code> in an azimuth field became <strong>a live contact bearing 8&deg; on the
     driver's HUD</strong>, while the Python side rejected the same frame. That is the one that
-    mattered: the Kotlin comment directly above it calls this &ldquo;the untrusted network
-    boundary&rdquo;.</li>
+    mattered.</li>
     <li>Python's <code>int()</code> accepts underscores, surrounding whitespace and unbounded
     magnitudes &mdash; a <strong>4000-digit track id</strong> parsed fine there and was dropped on
     the tablet.</li>
@@ -164,7 +163,9 @@ and a 32-bit consumer, not a defect.</p>
 <div class="note">
   <span class="label">The corpus was measured, not authored</span>
   <p>Identical inputs were run through both implementations and only agreed-upon results were
-  written &mdash; enforced by an assert in the generator. <strong>If you change the format, re-run
+  written. The differential harness that did this is not checked in; unlike
+  <code>ZCOVER</code> and <code>$ZVER</code>, the <code>ZTHREAT</code> corpus has no generator in the
+  tree. <strong>If you change the format, re-run
   that differential comparison rather than hand-editing the JSON.</strong> Hand-editing lets you
   write down what you believe instead of what the code does, which is the exact failure this file
   exists to prevent.</p>
@@ -173,7 +174,7 @@ and a 32-bit consumer, not a defect.</p>
 </div>
 
 </div>
-<p class="srcnote"><b>Converted from</b><br><code>protocol/README.md</code> &middot; <code>docs/PROTOCOLS.md &sect;3.5</code> &middot; <code>SYNC.md 2026-08-10</code></p>
+<p class="srcnote"><b>Converted from</b><br><code>protocol/README.md</code> &middot; <code>docs/PROTOCOLS.md &sect;3.5</code></p>
 
 <nav class="pager" aria-label="Page navigation"><a class="prev" href="../protocols/zthreat.html"><span class="pager-dir">Previous</span><span class="pager-name">ZTHREAT frames</span></a><a class="next" href="../protocols/fov-discrepancy.html"><span class="pager-dir">Next</span><span class="pager-name">Field of view (settled)</span></a></nav>
   </article>

@@ -84,7 +84,7 @@
 </ol></div>
 </nav>
   <div class="rail-foot">
-    <p>Built from the repository's own Markdown, verified against the code on 2026&#8209;08&#8209;14.</p>
+    <p>Built from the repository's own Markdown, verified against the code on 2026&#8209;10&#8209;23.</p>
     <p>Offline by design — no network requests.</p>
   </div>
 </aside>
@@ -126,7 +126,7 @@
 <thead><tr><th>Term</th><th>Means</th></tr></thead>
 <tbody>
 <tr><th>Concept</th><td>One of the three runtime-switchable cockpit UIs &mdash; RADAR, MAP or DRIVER. Switching is purely presentational; all three read the same state.</td></tr>
-<tr><th>Fleet bus</th><td>The two fixed multicast channels on the vehicle's own WiFi that all three parts agree on. <a href="../protocols/index.html">Detail</a>.</td></tr>
+<tr><th>Fleet bus</th><td>The four fixed multicast channels on the vehicle's own WiFi that all three parts agree on: NMEA telemetry, ZTHREAT, <code>$ZNAV</code> and <code>$ZVER</code>. <a href="../protocols/index.html">Detail</a>.</td></tr>
 <tr><th>Ego</th><td>The vehicle itself, as drawn on the map &mdash; the ego marker, the ego fix.</td></tr>
 <tr><th>Contact</th><td>One detected person on the ZTHREAT channel: a track id, a bearing, an apparent size, and a collision flag.</td></tr>
 <tr><th><code>relAzDeg</code></th><td>A contact's bearing relative to the vehicle's nose. Negative is left, positive is right, full circle <span class="val">&plusmn;180</span>.</td></tr>

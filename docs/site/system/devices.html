@@ -84,7 +84,7 @@
 </ol></div>
 </nav>
   <div class="rail-foot">
-    <p>Built from the repository's own Markdown, verified against the code on 2026&#8209;08&#8209;14.</p>
+    <p>Built from the repository's own Markdown, verified against the code on 2026&#8209;10&#8209;23.</p>
     <p>Offline by design — no network requests.</p>
   </div>
 </aside>
@@ -114,9 +114,9 @@
 <tbody>
 <tr><th>Hero dashboard</th><td>Galaxy Tab S9+ (<code>SM-X810</code>)</td><td><code>:app</code>, RADAR or MAP</td><td>12.4&Prime; OLED</td><td><span class="chip ok">In use</span></td></tr>
 <tr><th>Driver night display</th><td>Galaxy A54 (<code>SM-A546V</code>)</td><td><code>:app</code>, DRIVER concept</td><td>6.4&Prime; OLED</td><td><span class="chip unproven">Night legibility unverified</span></td></tr>
-<tr><th>Passenger / crew displays</th><td>Fire HD 10 (<code>KFTUWI</code>), Fire HD 8, spare tablets</td><td><code>:app</code>, passenger carousel or RADAR/MAP</td><td>LCD</td><td><span class="chip ok">In use</span></td></tr>
+<tr><th>Passenger / crew displays</th><td>2&times; Fire HD 10 (<code>KFMAWI</code> 9th gen, API 28; <code>KFTUWI</code> 11th gen, API 30)</td><td><code>:app</code>, passenger carousel or RADAR/MAP</td><td>LCD</td><td><span class="chip ok">In use; cannot be kiosked</span></td></tr>
 <tr><th>Sensor hub</th><td>XCover Pro (<code>SM-G715U</code>)</td><td><code>:beacon</code>, headless</td><td>screen off</td><td><span class="chip ok">GPS + compass verified</span></td></tr>
-<tr><th>Vision edge box</th><td>Jetson Orin Nano Super</td><td><code>zvision</code></td><td>&mdash;</td><td><span class="chip unproven">Cameras streaming; ring/aim/detector pending</span></td></tr>
+<tr><th>Vision edge box</th><td>Jetson Orin Nano Super</td><td><code>zvision</code></td><td>&mdash;</td><td><span class="chip unproven">Installed in the vehicle; cameras not yet mounted; ring/aim/detector pending</span></td></tr>
 <tr><th>Light control surface</th><td>Elgato Stream Deck Mini (<code>0fd9:0063</code>)</td><td><code>zdeck</code></td><td>6 keys</td><td><span class="chip ok">Driven on real hardware</span></td></tr>
 <tr><th>Tracker light</th><td>DMX moving head + FTDI USB-DMX</td><td><code>zvision</code> / <code>zdeck</code> via <code>olad</code></td><td>&mdash;</td><td><span class="chip unproven">Characterised; aim uncalibrated</span></td></tr>
 <tr><th>Network</th><td>Travel router (AP + DHCP)</td><td>&mdash;</td><td>&mdash;</td><td><span class="chip ok">In use</span></td></tr>
@@ -211,11 +211,12 @@ lingers alongside the good one, so always target <code>-s &lt;ip:port&gt;</code>
 
 <h2 id="fire">Fire HD 10 &mdash; passenger display and performance floor</h2>
 
-<p><code>KFTUWI</code> (codename &ldquo;tungsten&rdquo;). Operator-recorded: Android 11 / Fire OS 8,
-API 30, arm64-v8a, 1920&times;1200 in landscape.</p>
+<p>Two of them. <code>KFTUWI</code> (11th gen, codename &ldquo;tungsten&rdquo;), operator-recorded as
+Android 11 / Fire OS 8, API 30, arm64-v8a, 1920&times;1200 in landscape; and <code>KFMAWI</code>
+(9th gen), Fire OS 7, API 28.</p>
 
-<p>Also a passenger-display target alongside the Fire HD 8 10th gen, which is why <code>:app</code>
-targets minSdk&nbsp;28 rather than 30. Older 8&Prime; Fires are Fire OS 6/5 (API 25/22) and are
+<p>The 9th gen is why <code>:app</code> targets minSdk&nbsp;28 rather than 30 (the Fire HD 8 10th gen,
+also API 28, is supported for the same reason). Older 8&Prime; Fires are Fire OS 6/5 (API 25/22) and are
 <strong>not</strong> supported &mdash; check any candidate with
 <code>adb shell getprop ro.build.version.sdk</code>.</p>
 
@@ -252,14 +253,16 @@ a roof antenna. The travel router keeps the AP and DHCP role in both cases.</p>
 
 <h2 id="jetson">Jetson Orin Nano Super &mdash; edge box</h2>
 
-<p>Mounted in the vehicle. Runs <code>zvision</code>, <code>zdeck</code>, the breadcrumb tracklog service and
+<p>Installed in the vehicle; the cameras are not yet mounted, and <code>zvision</code> has not yet run
+on the vehicle. It carries <code>zvision</code>, <code>zdeck</code>, the breadcrumb tracklog service and
 its read-only HTTP server. Its four USB-A connectors are a single onboard 4-port hub.</p>
 
 <div class="note">
   <span class="label">Do not re-cable the cameras to free a port</span>
-  <p>Adding a hub upstream changes every <code>by-path</code> device path in
-  <code>ZVISION_ARGS</code> and the cameras stop resolving. The Stream Deck is HID and is found by
-  vendor:product id, so it is immune to that trap &mdash; which is why it took the fourth port.</p>
+  <p>Adding a hub upstream changes the <code>by-path</code> paths the RGB cameras use in
+  <code>ZVISION_ARGS</code>, and they stop resolving. The thermal is serial-pinned to
+  <code>/dev/zodiac-thermal</code> by its udev rule and the Stream Deck is found by vendor:product id,
+  so both are immune to that trap &mdash; which is why the Stream Deck took the fourth port.</p>
 </div>
 
 <p>Compute is not the bottleneck for this workload; thermal resolution and available training data
@@ -304,8 +307,9 @@ materials one.</p>
 <p>A travel router provides the AP and DHCP on a single /24. Starlink is aboard as WAN but is
 treated as non-critical &mdash; nothing realtime depends on it.</p>
 
-<p>There are <strong>no hardcoded IPs anywhere</strong>. Both realtime streams ride fixed multicast
-groups compiled into every part, with a subnet-directed broadcast copy for access points that drop
+<p>There are <strong>no hardcoded IPs anywhere</strong>. All four fleet streams (NMEA
+<code>239.7.7.10:10110</code>, ZTHREAT <code>.20:10120</code>, <code>$ZNAV</code> <code>.30:10130</code>,
+<code>$ZVER</code> <code>.40:10140</code>) ride fixed multicast groups compiled into every part, with a subnet-directed broadcast copy for access points that drop
 multicast. <a href="../protocols/index.html">The fleet bus &rarr;</a></p>
 
 </div>

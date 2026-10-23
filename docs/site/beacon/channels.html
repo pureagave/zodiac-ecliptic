@@ -84,7 +84,7 @@
 </ol></div>
 </nav>
   <div class="rail-foot">
-    <p>Built from the repository's own Markdown, verified against the code on 2026&#8209;08&#8209;14.</p>
+    <p>Built from the repository's own Markdown, verified against the code on 2026&#8209;10&#8209;23.</p>
     <p>Offline by design — no network requests.</p>
   </div>
 </aside>
@@ -183,8 +183,9 @@ watching the value.</p>
 <h2 id="zbcn">$ZBCN &mdash; beacon health</h2>
 
 <p>Battery percentage, GNSS fix quality, satellite count and service uptime. Fields 2 and 3 are
-<em>sniffed</em> from passing GGA sentences; if none has arrived, the previous values persist rather
-than resetting.</p>
+<em>sniffed</em> from passing GGA sentences. If the most recent GGA is more than 10&nbsp;s old the
+beacon reports <code>0</code>/<code>0</code> rather than stale values, so a silent GNSS chip reads as
+&ldquo;no fix&rdquo;; before the first GGA they are <code>0</code>/<code>0</code>.</p>
 
 <p>This is the channel that gives hours of warning before the hub dies, which is what makes the
 battery-versus-Doze trade acceptable: roughly 2&ndash;4 days on battery if vehicle power fails,
@@ -216,7 +217,7 @@ next comparison and recovery is automatic. Fail-closed throughout, because
 <code>totalMeters</code> is unrecoverable once written.</p>
 
 </div>
-<p class="srcnote"><b>Converted from</b><br><code>docs/PROTOCOLS.md &sect;2</code> &middot; <code>ARCHITECTURE.md &sect;5</code> &middot; <code>README.md</code> &middot; <code>docs/AUDIT-2026-08-09.md C1, C7, C8</code></p>
+<p class="srcnote"><b>Converted from</b><br><code>docs/PROTOCOLS.md &sect;2</code> &middot; <code>ARCHITECTURE.md &sect;5</code> &middot; <code>README.md</code></p>
 
 <nav class="pager" aria-label="Page navigation"><a class="prev" href="../beacon/index.html"><span class="pager-dir">Previous</span><span class="pager-name">Overview</span></a><a class="next" href="../beacon/service.html"><span class="pager-dir">Next</span><span class="pager-name">Service &amp; sensors</span></a></nav>
   </article>

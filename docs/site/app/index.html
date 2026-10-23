@@ -84,7 +84,7 @@
 </ol></div>
 </nav>
   <div class="rail-foot">
-    <p>Built from the repository's own Markdown, verified against the code on 2026&#8209;08&#8209;14.</p>
+    <p>Built from the repository's own Markdown, verified against the code on 2026&#8209;10&#8209;23.</p>
     <p>Offline by design — no network requests.</p>
   </div>
 </aside>
@@ -95,7 +95,8 @@
 <h1>:app &mdash; the cockpit</h1>
 <p class="standfirst">Package <code>org.pureagave.zodiac.control</code>. Kotlin + Jetpack Compose, minSdk 28,
     targetSdk / compileSdk 35, <code>screenOrientation="fullUser"</code> so each concept reflows for
-    landscape or portrait. This is what the fleet of tablets runs.</p>
+    landscape or portrait. This is what the fleet of tablets runs. At Black Rock City 2026 the
+    hero cockpit ran on the vehicle with the beacon and the vehicle WiFi; the other tablets did not.</p>
 <div class="prose">
 
 
@@ -198,12 +199,14 @@ treatment.</li>
 <div class="note absent">
   <span class="label">Also not real</span>
   <ul>
-    <li>Two MAP tiles render hard-coded literals: the cell gauges (<code>CELL A 70%</code>,
-    <code>CELL B 45%</code>) and the throttle trace. They are not wired to anything.</li>
+    <li>MAP's <code>CELL B</code> gauge is a static, visibly dimmed Victron placeholder
+    (<code>VEHICLE PENDING</code>) until the GX feed lands. <code>CELL A</code> (this device's
+    battery) and the throttle trace are real.</li>
     <li><code>CockpitUiState.tiltDeg</code> is persisted and clamped but the renderer applies a
     compile-time <span class="val">45&deg;</span> instead &mdash; a runtime <code>rotationX</code>
     would not render in that <code>graphicsLayer</code> on the S9+.</li>
-    <li>No automated coverage of the map touch interaction (drag / pinch / twist).</li>
+    <li>Pinch/twist math is unit-tested (<code>PinchSession</code>, <code>MapGestureMath</code>);
+    the pointer-event plumbing in <code>MapTouchInput</code> is not.</li>
   </ul>
 </div>
 

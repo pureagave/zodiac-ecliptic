@@ -84,7 +84,7 @@
 </ol></div>
 </nav>
   <div class="rail-foot">
-    <p>Built from the repository's own Markdown, verified against the code on 2026&#8209;08&#8209;14.</p>
+    <p>Built from the repository's own Markdown, verified against the code on 2026&#8209;10&#8209;23.</p>
     <p>Offline by design — no network requests.</p>
   </div>
 </aside>
@@ -209,14 +209,14 @@ split the field &mdash; taking the whole fleet's telemetry down.</p>
 <h2 id="tests">Tests</h2>
 
 <p><code class="path">beacon/src/test/&hellip;/{Nmea,AudioLevels,ShockDetector,TripOdometer}Test.kt</code>
-and others &mdash; <span class="val">18</span> classes, <span class="val">109</span> tests. Four
-suites use Robolectric; because <code>TelemetryBroadcaster</code> is a process singleton they all
-stop it and clear the injected GPS handle in <code>@After</code>.</p>
+and others &mdash; <span class="val">26</span> classes, <span class="val">180</span> tests. Ten
+suites use Robolectric; because <code>TelemetryBroadcaster</code> is a process singleton, the suites
+that start it stop it and clear the injected GPS handle in <code>@After</code>.</p>
 
 <div class="note bug">
   <span class="label">Until 2026-08-10, none of this ran in CI</span>
-  <p>Every step in <code>android-ci.yml</code> was <code>:app:</code>-scoped, so the beacon's 109
-  unit tests, ktlint, detekt, lint and assemble had <strong>never run on a push</strong> &mdash; on
+  <p>Every step in <code>android-ci.yml</code> was <code>:app:</code>-scoped, so the beacon's unit
+  tests (109 at the time), ktlint, detekt, lint and assemble had <strong>never run on a push</strong> &mdash; on
   the one module that must survive a reboot unattended for a week. All five gates are now unscoped.
   Run them unscoped locally too: an <code>:app:</code>-prefixed task silently skips the beacon,
   which is exactly how the gap survived.</p>
@@ -224,14 +224,14 @@ stop it and clear the injected GPS handle in <code>@After</code>.</p>
 
 <div class="note caveat">
   <span class="label">Open &mdash; seams worth extracting</span>
-  <p>Continuing the <code>BeaconNet</code> extraction out of the 408-line
+  <p>Continuing the <code>BeaconNet</code> extraction out of the ~970-line
   <code>TelemetryBroadcaster</code> object is recorded as open work, alongside a
   <code>SystemLocationSource</code> clock, <code>NetworkLocationSource.ingest()</code> and a
   BLE/USB <code>SppHandle</code> on the app side.</p>
 </div>
 
 </div>
-<p class="srcnote"><b>Converted from</b><br><code>ARCHITECTURE.md &sect;5</code> &middot; <code>docs/BUILD.md &sect;3, &sect;5</code> &middot; <code>tasks/open.md</code> &middot; <code>docs/AUDIT-2026-08-09.md B3&ndash;B6</code></p>
+<p class="srcnote"><b>Converted from</b><br><code>ARCHITECTURE.md &sect;5</code> &middot; <code>docs/BUILD.md &sect;3, &sect;5</code></p>
 
 <nav class="pager" aria-label="Page navigation"><a class="prev" href="../beacon/channels.html"><span class="pager-dir">Previous</span><span class="pager-name">The seven channels</span></a><a class="next" href="../jetson/index.html"><span class="pager-dir">Next</span><span class="pager-name">Overview</span></a></nav>
   </article>

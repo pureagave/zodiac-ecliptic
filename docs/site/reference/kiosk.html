@@ -84,7 +84,7 @@
 </ol></div>
 </nav>
   <div class="rail-foot">
-    <p>Built from the repository's own Markdown, verified against the code on 2026&#8209;08&#8209;14.</p>
+    <p>Built from the repository's own Markdown, verified against the code on 2026&#8209;10&#8209;23.</p>
     <p>Offline by design — no network requests.</p>
   </div>
 </aside>
@@ -122,13 +122,13 @@ it is not superstition, the <code>dpm</code> command refuses otherwise.</p>
 <h2 id="steps">Steps, per tablet</h2>
 
 <ol>
-<li><strong>Factory reset.</strong> Settings &rarr; Device Options &rarr; Reset to Factory
-Defaults.</li>
+<li><strong>Factory reset.</strong> Settings &rarr; General management &rarr; Reset &rarr; Factory
+data reset.</li>
 <li><strong>Skip account sign-in during setup.</strong> This is the step that matters. If an Amazon or
 Google account gets added, <code>dpm</code> will refuse and you have to reset again. Skip Wi-Fi too
 if it pushes you toward signing in; add it afterwards.</li>
-<li>Enable developer options and ADB (Settings &rarr; Device Options &rarr; About &rarr; tap Serial
-Number &times;7, then Developer Options &rarr; ADB debugging).</li>
+<li>Enable developer options and ADB (Settings &rarr; About tablet/phone &rarr; Software information
+&rarr; tap Build number &times;7, then Developer options &rarr; USB debugging).</li>
 <li>Install and provision:
 <pre><code>adb install -r app-debug.apk
 adb shell dpm set-device-owner \
@@ -217,15 +217,32 @@ a reset is the only other way; it wipes the tablet and you re-provision from ste
   Provision the fleet only once the build is settled.</p>
 </div>
 
+<h2 id="fire">Fire tablets cannot be kiosked</h2>
+
+<div class="note bug">
+  <span class="label">Measured 2026-08-18 on both Fire HD 10s</span>
+  <p>Established by exhausting every option on a 9th-gen <code>KFMAWI</code> (API 28) and an 11th-gen
+  <code>KFTUWI</code> (API 30). Fire OS ships <code>com.amazon.parentalcontrols</code> as a
+  <em>profile owner</em> baked into the OS image, and a profile owner blocks
+  <code>dpm set-device-owner</code> outright. It is unremovable without root: it survives a factory
+  reset and an online deregister, <code>dpm remove-active-admin</code> throws
+  <code>SecurityException: non-test admin</code>, and <code>pm uninstall --user 0</code> fails with
+  <code>DELETE_FAILED_INTERNAL_ERROR</code>.</p>
+  <p>The Samsungs (S9+, A54) have no profile owner and provision cleanly. So the passenger Fires get
+  neither the kiosk nor the auto-relaunch after reboot. The options for them: run unlocked (accept
+  the ad lockscreen and a manual tap after each power-cycle), lighter screen-pinning (escapable, no
+  auto-relaunch), or swap the passenger displays for non-Fire Android tablets.</p>
+</div>
+
 <h2 id="which">Which tablets should get it</h2>
 
 <div class="tablewrap">
 <table>
 <thead><tr><th>Device</th><th>Kiosk?</th><th>Why</th></tr></thead>
 <tbody>
-<tr><th>Passenger displays</th><td><strong>Yes</strong></td><td>This is exactly what it is for</td></tr>
-<tr><th>S9+ hero dashboard</th><td><strong>Yes</strong>, if permanently mounted</td><td></td></tr>
+<tr><th>S9+ hero dashboard</th><td><strong>Yes</strong></td><td>Samsung, provisions cleanly; mounted, worth it</td></tr>
 <tr><th>A54 driver phone</th><td><strong>Probably not</strong></td><td>Kiosk means no maps, no phone, no camera on that device &mdash; a lot to give up on the one screen the driver might genuinely need something else from</td></tr>
+<tr><th>Passenger Fires</th><td><strong>Cannot</strong></td><td>Fire OS's built-in profile owner blocks <code>dpm set-device-owner</code> (<a href="#fire">above</a>). Run unlocked or use screen-pinning</td></tr>
 <tr><th>XCover beacon</th><td><strong>No</strong></td><td>It is headless already; kiosk buys nothing</td></tr>
 </tbody>
 </table>
@@ -256,7 +273,7 @@ a reset is the only other way; it wipes the tablet and you re-provision from ste
 </div>
 
 </div>
-<p class="srcnote"><b>Converted from</b><br><code>docs/KIOSK.md</code> &middot; <code>tasks/open.md</code></p>
+<p class="srcnote"><b>Converted from</b><br><code>docs/KIOSK.md</code></p>
 
 <nav class="pager" aria-label="Page navigation"><a class="prev" href="../reference/build.html"><span class="pager-dir">Previous</span><span class="pager-name">Build, test, CI</span></a><a class="next" href="../reference/glossary.html"><span class="pager-dir">Next</span><span class="pager-name">Glossary</span></a></nav>
   </article>

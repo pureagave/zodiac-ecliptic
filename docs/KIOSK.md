@@ -22,12 +22,12 @@ reset is needed — it is not superstition, the `dpm` command refuses otherwise.
 
 ## Steps, per tablet
 
-1. **Factory reset.** Settings → Device Options → Reset to Factory Defaults.
+1. **Factory reset.** Settings → General management → Reset → Factory data reset.
 2. **Skip account sign-in during setup.** This is the step that matters. If an
    Amazon/Google account gets added, `dpm` will refuse and you have to reset
    again. Skip Wi-Fi too if it pushes you toward signing in; add it afterwards.
-3. Enable developer options and ADB (Settings → Device Options → About →
-   tap Serial Number ×7, then Developer Options → ADB debugging).
+3. Enable developer options and ADB (Settings → About tablet/phone → Software
+   information → tap Build number ×7, then Developer options → USB debugging).
 4. Install and provision:
 
    ```sh

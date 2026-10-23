@@ -84,7 +84,7 @@
 </ol></div>
 </nav>
   <div class="rail-foot">
-    <p>Built from the repository's own Markdown, verified against the code on 2026&#8209;08&#8209;14.</p>
+    <p>Built from the repository's own Markdown, verified against the code on 2026&#8209;10&#8209;23.</p>
     <p>Offline by design — no network requests.</p>
   </div>
 </aside>
@@ -93,7 +93,8 @@
   <article class="page">
 <p class="kicker">jetson/ &#183; the edge box</p>
 <h1>jetson/ &mdash; the edge box</h1>
-<p class="standfirst">An in-vehicle <strong>Jetson Orin Nano Super</strong> running two Python packages:
+<p class="standfirst">A <strong>Jetson Orin Nano Super</strong>, installed in the vehicle (cameras not yet
+    mounted; zvision has not yet run on the vehicle), that carries two Python packages:
     <code>zvision</code>, which turns camera frames into vehicle-relative threat contacts on the
     fleet bus and aims a DMX moving head at them, and <code>zdeck</code>, a six-key physical control
     surface for that light.</p>
@@ -219,8 +220,8 @@ not just a clean stop.</li>
 
 <div class="note caveat">
   <span class="label"><code>install.sh</code> does less than it sounds</span>
-  <p>It copies <strong>only</strong> the <code>zvision</code> package &mdash; not <code>zdeck</code>,
-  not <code>tests</code> &mdash; installs <strong>only</strong> <code>zvision.service</code>, does
+  <p>It copies <code>zvision</code> and <code>zdeck</code> (not <code>tests</code>), installs
+  <strong>only</strong> <code>zvision.service</code> plus the thermal and Stream Deck udev rules, does
   not create the breadcrumb logger's directory, and writes a config of
   <code>ZVISION_ARGS=--source fake --hz 10</code>. It also <em>enables and starts</em> the service
   immediately, so on a fresh install the box begins broadcasting three synthetic contacts &mdash;

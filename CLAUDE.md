@@ -42,8 +42,8 @@ by tests that agreed with the code they tested more than once.
 cd jetson && python3 -m unittest discover -s tests -t .                 # when touching the edge box
 ```
 
-Counts as of 2026-08-14, all green: `:app` **1008**, `:beacon` **109**,
-`jetson` **475**.
+Counts as of 2026-10-22, all green: `:app` **1210**, `:beacon` **180**,
+`jetson` **542**.
 
 CI on push/PR to `main`:
 
@@ -70,14 +70,14 @@ Dagger. Everything is `by lazy`; `onCreate` does the only ordered work.
   on `CockpitConcept` to `MotionTrackerScreen` (RADAR) / `InstrumentBayScreen`
   (MAP) / `DriverNightScreen` (DRIVER), or bypasses all three for
   `passengerScreen` when this device holds the passenger role.
-- **`ui/viewmodel/`** — **five** files: `CockpitViewModel` (~536 lines, 20 public
+- **`ui/viewmodel/`** — **five** files: `CockpitViewModel` (~630 lines, 20 public
   functions) owns the single `MutableStateFlow<CockpitUiState>` and the flow
   wiring, and delegates to `MapCameraController` (pan/zoom/rotate/tilt/recenter),
   `NavigationController` (drive-to, routing, street and art callouts),
   `GpsController` (source selection, fake-GPS nudges) and `NavShareController`
   (adopt/broadcast the shared `$ZNAV` destination). The public API is the
   ViewModel's; the delegates are internal collaborators.
-- **`ui/state/CockpitUiState`** — one immutable data class, 36 fields, updated by
+- **`ui/state/CockpitUiState`** — one immutable data class, 42 fields, updated by
   `.copy()`. The per-frame copy cost is known and tracked as A5 in `tasks/open.md`.
 - **`core/`** — all pure logic, no Android: `geo`, `navigation`, `ops`, `vision`,
   `telemetry`, `sensor`, `model`, `connection`, `log`, `net`, `passenger`,
@@ -88,7 +88,8 @@ Dagger. Everything is `by lazy`; `onCreate` does the only ordered work.
   `TelemetryRepository`, `data/transport/TransportAdapter`,
   `data/sensor/*LocationSource`, `data/vision/*ThreatSource`,
   `data/playa/PlayaMapRepository`, `data/discovery/DiscoveryRepository`,
-  `data/prefs/DataStoreCockpitPreferences`, `data/log/FileLogTree`.
+  `data/prefs/DataStoreCockpitPreferences`, `data/log/FileLogTree`,
+  `data/fleet/` (the `$ZVER` sender/receiver), `data/power/DeviceBatterySource`.
 
 **Input validation lives in the ViewModel layer**, so every entry point — chip,
 gesture, synthetic GPS, persisted preference — is bounded identically: heading
@@ -211,7 +212,7 @@ Top-left = park · bottom-left = burn-in tuning panel · bottom-right = log view
 
 Headless foreground service, minSdk 29. `TelemetryBroadcaster` forwards raw GNSS
 NMEA **verbatim** and synthesizes `$GPHDT`, `$ZTLM`, `$ZAUD`, `$ZENV`, `$ZSHK`,
-`$ZBCN`, `$ZODO`. Sentence builders and the XOR checksum are in `Nmea.kt`; every
+`$ZBCN`, `$ZODO`; `VersionBroadcaster` sends `$ZVER` on its own socket. Sentence builders and the XOR checksum are in `Nmea.kt`; every
 format is pinned to `Locale.US`.
 
 One 250 ms tick loop drives everything periodic with integer divisors. A deadman
@@ -234,7 +235,7 @@ lifetime odometer never accumulates simulated meters. See
 `design/BEACON-GPS-TEST-MODE-spec.md`.
 
 Tests: `beacon/src/test/.../{Nmea,AudioLevels,ShockDetector,TripOdometer,BeaconNet,
-ForegroundTypes,TickLoop,...}Test.kt` — 18 files, several Robolectric.
+ForegroundTypes,TickLoop,...}Test.kt` — 26 files, ten of them Robolectric.
 
 ## `jetson/` — the edge box
 

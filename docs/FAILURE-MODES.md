@@ -75,7 +75,7 @@ Key code facts behind this:
 - **Which one matters:** losing the **forward** camera kills forward collision detection; a side/rear loss just drops that arc.
 - **Today (single thermal):** the forward ±64° is COVERED, the rest of the ring renders BLIND — correct.
 
-## The two real gaps (tracked in `tasks/open.md`)
+## The two real gaps (tracked in the private development backlog)
 
 1. **Fires-only cannot set a destination.** Nav-authority is Samsung-only; a Fire
    can't self-promote if no Samsung is present. Guard by keeping ≥1 Samsung alive;

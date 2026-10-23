@@ -84,7 +84,7 @@
 </ol></div>
 </nav>
   <div class="rail-foot">
-    <p>Built from the repository's own Markdown, verified against the code on 2026&#8209;08&#8209;14.</p>
+    <p>Built from the repository's own Markdown, verified against the code on 2026&#8209;10&#8209;23.</p>
     <p>Offline by design — no network requests.</p>
   </div>
 </aside>
@@ -105,9 +105,9 @@
 <table>
 <thead><tr><th></th><th>Built &amp; verified</th><th>Built, not yet proven on the vehicle</th><th>Not built</th></tr></thead>
 <tbody>
-<tr><th><code>:app</code></th><td>All three concepts, playa map, routing, shared <code>$ZNAV</code> destination (verified device-to-device), GPS sourcing incl. NET, burn-in, kiosk (incl. auto-relaunch after reboot), logging, passenger display</td><td>2026 base-map address check on-device</td><td>Real vehicle transports</td></tr>
-<tr><th><code>:beacon</code></th><td>GPS + compass end to end; all seven sentence types under test</td><td>The five sensor channels in a moving vehicle</td><td>Production Pi + u-blox hub</td></tr>
-<tr><th><code>jetson/</code></th><td>ZTHREAT bus with <code>--source fake</code>; thermal + RGB cameras streaming on the box; boot-wedge self-heal proven on hardware; DMX fixture characterised; Stream Deck driven on real hardware</td><td>Tracker aim calibration; the permanent multi-camera ring on the vehicle</td><td>Trained detector, DMX arbitration between tracker and deck, proximity alarm</td></tr>
+<tr><th><code>:app</code></th><td>The hero cockpit ran on the vehicle at Black Rock City 2026 (on its own GNSS after a GPS bug was found and fixed on site); the whole fleet was tested together on the vehicle network before the event. All three concepts, playa map, routing, shared <code>$ZNAV</code> destination (verified device-to-device), GPS sourcing incl. NET, burn-in, kiosk (incl. auto-relaunch after reboot), logging, passenger display</td><td>2026 base-map address check on-device</td><td>Real vehicle transports</td></tr>
+<tr><th><code>:beacon</code></th><td>GPS + compass end to end; ran on the vehicle at Black Rock City 2026 on the vehicle WiFi; all seven sentence types under test</td><td>The five sensor channels in a moving vehicle</td><td>Production Pi + u-blox hub</td></tr>
+<tr><th><code>jetson/</code></th><td>ZTHREAT bus with <code>--source fake</code>; thermal + RGB cameras streaming on the box on the bench; box installed in the vehicle; boot-wedge self-heal proven on hardware; DMX fixture characterised; Stream Deck driven on real hardware</td><td>Tracker aim calibration; mounting the cameras and running <code>zvision</code> on the vehicle (it did not run at BRC 2026)</td><td>Trained detector, DMX arbitration between tracker and deck, proximity alarm</td></tr>
 </tbody>
 </table>
 </div>
@@ -120,8 +120,8 @@
   (<code>CameraStallGuard</code>, <span class="val">~20&nbsp;s</span>, hardware-proven) and re-derives
   its broadcast target if it started before DHCP, and <code>NetworkThreatSource</code> rebuilds its
   socket so a router power-cycle no longer kills the night-vision HUD for the night. The one thing
-  still needing a human is beacon power &mdash; it is the fleet's only GNSS. Detail in
-  <code>docs/AUDIT-2026-08-13-resilience.md</code>.</p>
+  still needing a human is beacon power &mdash; it is the fleet's shared GNSS (tablets with their own
+  GNSS fail over to it). The audit itself lives in the private development repository.</p>
 </div>
 
 <h2 id="fake">Deliberately fake, stubbed, or absent</h2>
@@ -133,16 +133,16 @@
 <tr><th>Vehicle transports (BLE / USB / WiFi)</th><td><strong>Fake.</strong> One <code>FakeTransportAdapter</code> implementation, three registered instances.</td></tr>
 <tr><th><code>TelemetryRepository</code></th><td><strong>Fake.</strong> Deterministic synthetic thermal / mode / link tick.</td></tr>
 <tr><th>Vehicle command vocabulary</th><td><code>SetHeading</code> / <code>SetSpeed</code> only, delivered to a fake.</td></tr>
-<tr><th>MAP cell gauges and throttle trace</th><td>Hard-coded literals in the composable &mdash; <code>CELL A 70%</code>, <code>CELL B 45%</code>. Not wired to anything.</td></tr>
+<tr><th>MAP CELL B gauge</th><td>A static, visibly dimmed placeholder (<span class="val">50%</span>, <code>VEHICLE PENDING</code>) until the Victron GX feed lands. CELL A is this device's real battery and the throttle trace is a real 30-minute speed history.</td></tr>
 <tr><th>Jetson detector</th><td>Background subtraction. <strong>No model, no weights, no inference runtime</strong> anywhere in the tree.</td></tr>
-<tr><th>Jetson camera ring</th><td>Software complete; thermal + RGB cameras now connected and streaming on the box (thermal measured 2026-08-13: <code>Y16</code> 160&times;120 @ 8.79&nbsp;fps). <strong>The permanent multi-camera ring, on-vehicle mount/aim and a trained detector are still to come.</strong></td></tr>
+<tr><th>Jetson camera ring</th><td>Software complete; thermal + RGB cameras connected and streaming on the box on the bench (thermal measured 2026-08-13: <code>Y16</code> 160&times;120 @ 8.79&nbsp;fps). The box is installed in the vehicle; <strong>the cameras are not yet mounted, and the permanent multi-camera ring, aim and a trained detector are still to come.</strong></td></tr>
 <tr><th>Tracker light aim</th><td><code>tilt_far</code> / <code>tilt_near</code> / <code>pan_center</code> are uncalibrated placeholders.</td></tr>
 <tr><th>DMX arbitration</th><td>Unresolved. <code>zvision --dmx ola</code> and <code>zdeck</code> must not run together.</td></tr>
 <tr><th><code>CockpitUiState.tiltDeg</code></th><td>Persisted and clamped, but the renderer uses a compile-time <span class="val">45&deg;</span> &mdash; a runtime <code>rotationX</code> would not render in that <code>graphicsLayer</code> on the S9+.</td></tr>
 <tr><th><code>EgoStyle.HEX</code></th><td>Implemented, selected by no concept.</td></tr>
 <tr><th>mDNS service discovery</th><td>Not built.</td></tr>
 <tr><th>Proximity alarm</th><td>Not built.</td></tr>
-<tr><th>Map touch interaction tests</th><td>None. Drag / pinch / twist have no automated coverage.</td></tr>
+<tr><th>Map touch interaction tests</th><td>Partial. The pinch/twist math (<code>PinchSession</code>, <code>MapGestureMath</code>) is unit-tested; the pointer-event plumbing around it is not.</td></tr>
 </tbody>
 </table>
 </div>
@@ -220,15 +220,15 @@ real beacon.</p>
 
 <h2 id="tests">Test counts</h2>
 
-<p>Measured 2026-08-14, all green.</p>
+<p>Measured 2026-10-22, all green.</p>
 
 <div class="tablewrap">
 <table>
 <thead><tr><th>Suite</th><th class="num">Tests</th></tr></thead>
 <tbody>
-<tr><th><code>:app</code></th><td class="num">1008</td></tr>
-<tr><th><code>:beacon</code></th><td class="num">109</td></tr>
-<tr><th><code>jetson</code></th><td class="num">475</td></tr>
+<tr><th><code>:app</code></th><td class="num">1,210</td></tr>
+<tr><th><code>:beacon</code></th><td class="num">180</td></tr>
+<tr><th><code>jetson</code></th><td class="num">542</td></tr>
 </tbody>
 </table>
 </div>
@@ -237,17 +237,17 @@ real beacon.</p>
 
 <h2 id="audit">The audits</h2>
 
-<p>Three audits are recorded in <code class="path">docs/</code>. Their findings are closed or triaged;
-the evidence is kept because several of the fixes are load-bearing design decisions that are easy to
-undo by accident.</p>
+<p>Three audits were run; they and the decision log live in the private development repository.
+Their findings are closed or triaged. They are summarised here because several of the fixes are
+load-bearing design decisions that are easy to undo by accident.</p>
 
 <div class="tablewrap">
 <table>
 <thead><tr><th>Audit</th><th>What it asked</th><th>Outcome</th></tr></thead>
 <tbody>
-<tr><th><code>AUDIT-2026-08-09.md</code></th><td>Four independent reviews of the Android side &mdash; the <code>:beacon</code> hub, GPS sourcing/fallback, the telemetry/state pipeline, offline resilience</td><td>20 findings (A1&ndash;A3, B1&ndash;B6, C1&ndash;C10); <strong>all closed</strong> as of 2026-08-10</td></tr>
-<tr><th><code>AUDIT-2026-08-13.md</code></th><td>Eight-agent fleet-wide bug-hunt, one high-risk area each</td><td>~40 findings (8 P1 all confirmed, ~12 P2, ~20 P3); every in-scope P1 and P2 fixed and shipped bar two deferred for on-hardware validation</td></tr>
-<tr><th><code>AUDIT-2026-08-13-resilience.md</code></th><td>&ldquo;Does the fleet come back by itself after a power event?&rdquo; &mdash; power loss, unplug/replug, reboot, cold power-on</td><td>Drove the shipped self-recovery work: tablet auto-relaunch (kiosk Home app), the Jetson camera-stall self-heal, and the <code>NetworkThreatSource</code> rebuild loop</td></tr>
+<tr><th>2026-08-09</th><td>Four independent reviews of the Android side &mdash; the <code>:beacon</code> hub, GPS sourcing/fallback, the telemetry/state pipeline, offline resilience</td><td>20 findings (A1&ndash;A3, B1&ndash;B6, C1&ndash;C10); <strong>all closed</strong> as of 2026-08-10</td></tr>
+<tr><th>2026-08-13</th><td>Eight-agent fleet-wide bug-hunt, one high-risk area each</td><td>~40 findings (8 P1 all confirmed, ~12 P2, ~20 P3); every in-scope P1 and P2 fixed and shipped bar two deferred for on-hardware validation</td></tr>
+<tr><th>2026-08-13, resilience</th><td>&ldquo;Does the fleet come back by itself after a power event?&rdquo; &mdash; power loss, unplug/replug, reboot, cold power-on</td><td>Drove the shipped self-recovery work: tablet auto-relaunch (kiosk Home app), the Jetson camera-stall self-heal, and the <code>NetworkThreatSource</code> rebuild loop</td></tr>
 </tbody>
 </table>
 </div>
@@ -270,7 +270,7 @@ undo by accident.</p>
 <p>The audits' own <code>file:line</code> references have since drifted; navigate by symbol name.</p>
 
 </div>
-<p class="srcnote"><b>Converted from</b><br><code>README.md</code> &middot; <code>ARCHITECTURE.md &sect;8, &sect;9</code> &middot; <code>docs/README.md</code> &middot; <code>docs/AUDIT-2026-08-09.md</code> &middot; <code>docs/AUDIT-2026-08-13.md</code> &middot; <code>docs/AUDIT-2026-08-13-resilience.md</code> &middot; <code>docs/BUILD.md</code> &middot; <code>tasks/open.md</code></p>
+<p class="srcnote"><b>Converted from</b><br><code>README.md</code> &middot; <code>ARCHITECTURE.md &sect;8, &sect;9</code> &middot; <code>docs/README.md</code> &middot; <code>docs/BUILD.md</code> &middot; the audits and task list in the private development repository</p>
 
 <nav class="pager" aria-label="Page navigation"><a class="prev" href="../system/devices.html"><span class="pager-dir">Previous</span><span class="pager-name">Devices &amp; roles</span></a><a class="next" href="../protocols/index.html"><span class="pager-dir">Next</span><span class="pager-name">The fleet bus</span></a></nav>
   </article>

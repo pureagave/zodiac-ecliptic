@@ -3,13 +3,17 @@
 The engineering map of all three codebases: how each is layered, how data flows
 through it, which types matter, and where the seams between the parts are.
 
-> [`README.md`](README.md) is the public snapshot; [`SYNC.md`](SYNC.md) is the
-> dated decision log; [`docs/PROTOCOLS.md`](docs/PROTOCOLS.md) is the byte-level
+> [`README.md`](README.md) is the public snapshot; the dated decision log lives
+> in the private development repo; [`docs/PROTOCOLS.md`](docs/PROTOCOLS.md) is the byte-level
 > wire reference; [`docs/BUILD.md`](docs/BUILD.md) is build/test/deploy.
 > This file is the thing you read to find your way around the code.
 
 **Status legend:** ✅ built and exercised · 🚧 built, not yet proven on the
 vehicle · 📋 planned, no code.
+
+**Field record.** At Black Rock City 2026 the beacon, the vehicle WiFi and the
+hero cockpit ran on the vehicle; the other tablets, `$ZNAV` and the Jetson did
+not. The full fleet was tested together on the vehicle network before the event.
 
 ---
 
@@ -44,7 +48,7 @@ Full rationale in [`docs/DEVICES.md`](docs/DEVICES.md).
 |---|---|---|---|
 | Hero dashboard | Galaxy Tab S9+ (`SM-X810`), 12.4" OLED | `:app` | ✅ |
 | Driver night display | Galaxy A54 (`SM-A546V`), OLED | `:app` (DRIVER) | 🚧 night legibility unverified |
-| Passenger / crew displays | Fire HD 10 (`KFTUWI`) + others, LCD | `:app` | ✅ |
+| Passenger / crew displays | 2× Fire HD 10 (`KFMAWI`, `KFTUWI`), LCD | `:app` | ✅ |
 | Sensor hub | XCover Pro (`SM-G715U`), headless | `:beacon` | ✅ |
 | Vision edge box | Jetson Orin Nano Super | `zvision` | 🚧 thermal + RGB cameras streaming on the box; ring/aim/detector pending |
 | Light control surface | Stream Deck Mini (`0fd9:0063`) | `zdeck` | ✅ |
@@ -75,12 +79,16 @@ Constants live in exactly two mirrored places —
 ```
 TELEMETRY_GROUP = 239.7.7.10   TELEMETRY_PORT = 10110    TTL = 1
 THREAT_GROUP    = 239.7.7.20   THREAT_PORT    = 10120
+NAV_GROUP       = 239.7.7.30   NAV_PORT       = 10130
+VERSION_GROUP   = 239.7.7.40   VERSION_PORT   = 10140
 ```
 
 `239.0.0.0/8` is administratively scoped, so nothing leaves the vehicle.
 
-**Every sender transmits twice** — once to the group, once to the /24
+**Every sender transmits twice** — once to the group, once to the
 subnet-directed broadcast — because some access points silently drop multicast.
+The beacon derives that broadcast from the DHCP netmask; the `:app` senders and
+`zvision` assume /24.
 **Every receiver binds the wildcard address** on the port and *additionally*
 joins the group, so both copies arrive. The cost of this is duplicate delivery,
 which is why the tablet de-duplicates byte-identical `$ZSHK` lines inside a
@@ -97,9 +105,9 @@ multicast frames from apps to save power unless the app holds a
 |---|---|---|---|---|
 | Vehicle telemetry | `:beacon` | all tablets | raw GNSS NMEA verbatim + `$GPHDT` + `$ZTLM` | ✅ |
 | Sensor channels | `:beacon` | all tablets | `$ZAUD` `$ZENV` `$ZSHK` `$ZBCN` `$ZODO` | ✅ |
-| Thermal threats | `zvision` | all tablets, DMX light | `ZTHREAT` frames | ✅ both ends built + tested; thermal/RGB cameras now streaming on the box |
+| Thermal threats | `zvision` | all tablets, DMX light | `ZTHREAT` frames, plus `ZCOVER` camera coverage (1 Hz + on change) | ✅ both ends built + tested; thermal/RGB cameras now streaming on the box |
 | Destination / nav | OLED tablets (S9+/A54) | all tablets | active drive-to target (`$ZNAV`, 239.7.7.30:10130) | ✅ verified device-to-device |
-| Fleet version | all nodes | hero dashboard | `$ZVER` build identity (239.7.7.40:10140) | 🚧 pure core built; emit + UI in progress |
+| Fleet version | all nodes | hero dashboard | `$ZVER` build identity (239.7.7.40:10140) | ✅ every node emits; FLEET tab in the on-device log viewer |
 | Vehicle commands | — | vehicle | heading / speed | 📋 (transports are fake) |
 | Raw thermal video | `zvision` | opt-in viewers | MJPEG/RTSP | 📋 |
 
@@ -159,7 +167,7 @@ code turns decisions into pixels, and the decisions live in `core/` with tests.
 
 ### 4.3 The ViewModel and its delegates
 
-`ui/viewmodel/` is five files. `CockpitViewModel` (~536 lines, 20 public
+`ui/viewmodel/` is five files. `CockpitViewModel` (~630 lines, 20 public
 functions) owns the single `MutableStateFlow<CockpitUiState>`, the flow
 subscriptions, and the vehicle-command actions; it constructs and delegates to
 four controllers that share that state handle:
@@ -180,9 +188,9 @@ point — chip, gesture, synthetic GPS, persisted preference — is bounded by t
 same rules: heading 0–359, speed 0–160 kph, tilt 0–80°, zoom 0.05–5.0 px/m,
 camera pan ±5000 m per axis.
 
-`CockpitUiState` is one immutable data class of 36 fields updated with `.copy()`.
+`CockpitUiState` is one immutable data class of 42 fields updated with `.copy()`.
 That is a known cost — a per-frame field change copies the whole state — tracked
-as item A5 in `tasks/open.md`.
+as item A5 in the development backlog.
 
 ### 4.4 Vehicle command path — entirely simulated
 
@@ -218,7 +226,7 @@ kept warm for a vehicle bus that does not exist yet.
 | Type | Implementation | Notes |
 |---|---|---|
 | `FAKE` | `FakeLocationSource` | integrating dead-reckoner around the Golden Spike, driven by the debug chips; 500 ms tick |
-| `SYSTEM` | `SystemLocationSource` | Android `LocationManager` GPS_PROVIDER behind an injectable handle; 1 s / 1 m |
+| `SYSTEM` | `SystemLocationSource` | Android `LocationManager` GPS_PROVIDER behind an injectable handle; 1 s / 0 m — no displacement filter: at BRC 2026 a 1 m filter withheld fixes from a parked vehicle and the readout flapped FIX/NO FIX |
 | `BLE` | `BleLocationSource` | Bluetooth **Classic SPP** despite the name; matches paired device names against a GPS-receiver regex |
 | `USB` | `UsbLocationSource` | `usb-serial-for-android`, 9600 8N1, lines reassembled by `NmeaLineAssembler` |
 | `NET` | `NetworkLocationSource` | the fleet path — see below |
@@ -251,6 +259,11 @@ after 3 s of an unhealthy primary — on top of the 5 s staleness window, so ~8 
 total blind — and recovers only after 10 s of health, deliberately asymmetric so
 a half-alive beacon cannot flap the source. It is armed only on devices that
 report `FEATURE_LOCATION_GPS`, asked of the hardware rather than assumed by model.
+While failover is engaged the telemetry source line reads `◐ LOCAL BACKUP`
+(`● ON BEACON` otherwise), so the operator can see they are on backup.
+
+`BLE` and `USB` self-heal on the same capped exponential backoff as `NET`; an
+I/O error is not terminal.
 
 ### 4.6 NMEA parsing
 
@@ -288,6 +301,17 @@ An empty-but-live feed is a real all-clear and must never trigger the demo
 fallback. `VisionFeed` is surfaced, not hidden: the HUD status line reads
 `DEMO` explicitly, the surround ring's rim goes dotted, and the passenger
 "souls detected" card is dropped entirely unless the feed is `LIVE`.
+
+**Coverage.** `zvision` also publishes which arcs its cameras actually see, as
+`ZCOVER` frames on the same group (golden corpus
+`protocol/coverage-protocol-golden.json`). `NetworkThreatSource` keeps the latest
+for 5 s; `SurroundRingCoverage` draws the rim from it when fresh and falls back
+to the static `COVERED_ARCS = -64f..64f` only for an old or silent Jetson. A
+bare `ZCOVER` means the whole ring is blind.
+
+The DRIVER `ENTERING <street>` flash yields while `! COLLISION COURSE !` is up
+(`core/ops/OverlayPriority.streetPopupVisible`): a collision warning is never
+covered by navigation.
 
 `core/vision/SurroundRing` holds every decision for the DRIVER HUD — bearing
 wrap, sector and band classification, angular clustering with hysteresis, the
@@ -364,7 +388,9 @@ PlayaMap → ProjectedMap (paths + point batches, cached per camera change)
 Polylines are held as flat `DoubleArray`s and walked with inline projection
 straight into a `Path` cursor, so the inner loop allocates nothing. Labels are
 measured colour-agnostically so a palette change never invalidates the layout
-cache. RADAR draws the map twice a frame — a dim base plus a lit re-blit clipped
+cache. They are offered in priority order (plaza > art > street > CPN) to
+`core/geo/LabelPlacer`, a greedy, allocation-free declutter: a label that would
+overprint one already placed is skipped. RADAR draws the map twice a frame — a dim base plus a lit re-blit clipped
 to the rotating sweep wedge — which is why the cached path exists at all.
 
 `ConceptTheme` is a strict semantic palette, set 2026-07-04 and shared by all
@@ -451,9 +477,10 @@ failures that could not honour the size cap, and lines aged out of the ring are
 all counted separately and surfaced in the log viewer's header. Silent loss
 would make the log a liar about its own completeness.
 
-`FileLogTree` is the Timber tree. Writes go through a 256-line channel that drops
-oldest on overflow and drains on IO, so a log call from a render or sensor
-coroutine costs a `trySend` and cannot stall a frame. The uncaught-exception
+`FileLogTree` is the Timber tree. Writes go through a 256-line buffer that drops
+oldest on overflow — every drop counted in `droppedBeforeWrite` and shown in the
+log viewer header — and drains on IO, so a log call from a render or sensor
+coroutine costs a deque push and a doorbell poke and cannot stall a frame. The uncaught-exception
 handler writes synchronously before the process dies.
 
 Tagged lifecycle events are the ones that actually get asked about: GPS source
@@ -541,6 +568,17 @@ matrix is unit-testable: location from API 34 gated on permission, microphone
 only with the permission *and* not from a background start, floored to
 `specialUse` so the result is never zero.
 
+**GPS test mode** (`GpsSim.kt`, `SimGpsReceiver.kt`) is the one sanctioned
+fabrication, for fleet-wide location testing. Armed over adb
+(`am broadcast -a org.pureagave.zodiac.beacon.SIM_GPS …`, `SIM_GPS_OFF` to
+disarm), it suppresses raw GNSS and synthesizes GGA/RMC/HDT for a preset, a
+lat/lon, or a moving heading+speed track. It is marked honestly — GGA quality 8
+("Simulation mode") on the wire and a `⚠ GPS SIMULATED` status banner — and the
+armed state is memory-only, so a reboot restores real GNSS.
+
+**Fleet version.** `VersionBroadcaster` sends the beacon's `$ZVER` build identity
+to `239.7.7.40:10140` every 10 s.
+
 ---
 
 ## 6. `jetson/` — the edge box
@@ -556,8 +594,8 @@ was opened before its USB device was streaming-ready can hang forever in
 false all-clear. A `CameraStallGuard` now reopens a stalled camera (~20 s,
 measured on hardware); the broadcaster re-derives its subnet-broadcast target if
 it started before the DHCP lease; and `olad` is `Restart=always`. These are the
-jetson half of the 2026-08-13 resilience audit
-([`docs/AUDIT-2026-08-13-resilience.md`](docs/AUDIT-2026-08-13-resilience.md)).
+jetson half of the 2026-08-13 resilience audit (kept in the private development
+repo).
 
 ### 6.1 `zvision` modules
 
@@ -570,6 +608,8 @@ jetson half of the 2026-08-13 resilience audit
 | `geometry.py` | pixel → bearing through a lens model, bbox → size, constant-bearing collision rule |
 | `normalize.py` | the array-free arithmetic — contrast stretch window, track-id assignment, re-baseline guard, camera-stall guard |
 | `threat.py` / `threat_protocol.py` | the `DriverThreat` record and the ZTHREAT wire format |
+| `coverage_protocol.py` | the `ZCOVER` camera-coverage wire format |
+| `version_protocol.py` / `version_report.py` | the `$ZVER` sentence and its 10 s build-identity sender |
 | `broadcaster.py` | UDP sender — multicast **and** subnet broadcast |
 | `fleet_bus.py` | group/port constants, mirrored from Kotlin |
 | `tracker.py` | DMX target selection, pan/tilt mapping, slew, idle sound show |
@@ -706,7 +746,7 @@ Byte-level detail in [`docs/PROTOCOLS.md`](docs/PROTOCOLS.md).
 
 Standard NMEA 0183 framing: `$` + body + `*` + two uppercase hex XOR-checksum
 digits + CRLF. Raw GNSS is forwarded verbatim; seven sentence types are
-synthesized. All numeric formatting is pinned to `Locale.US`, because a
+synthesized on the telemetry group, plus `$ZVER` on its own. All numeric formatting is pinned to `Locale.US`, because a
 comma-decimal locale would emit `12,3` and split the field.
 
 ### 7.2 `ZTHREAT` (`zvision` → `:app`)
@@ -731,6 +771,15 @@ check explicit numeric grammars rather than delegating to the host language's
 parser, and the Python side rounds parsed values through 32-bit float so both
 agree on the clamp boundaries. See [`protocol/README.md`](protocol/README.md).
 
+### 7.3 `ZCOVER`, `$ZNAV`, `$ZVER`
+
+`ZCOVER` (`zvision` → `:app`, threat group) carries the arcs the cameras cover.
+`$ZNAV` (nav-authority tablets → every tablet, `239.7.7.30:10130`) shares the
+drive-to destination. `$ZVER` (every node → every tablet, `239.7.7.40:10140`)
+carries each node's build identity. `ZCOVER` and `$ZVER` each have a golden
+corpus under [`protocol/`](protocol/); formats for all three are in
+[`docs/PROTOCOLS.md`](docs/PROTOCOLS.md).
+
 ---
 
 ## 8. What is deliberately fake, stubbed, or absent
@@ -743,7 +792,7 @@ wrong.
 | Vehicle transports (BLE / USB / WiFi) | **Fake.** One `FakeTransportAdapter` implementation, three registered instances. |
 | `TelemetryRepository` | **Fake.** Deterministic synthetic thermal/mode/link tick. |
 | Vehicle command vocabulary | `SetHeading` / `SetSpeed` only, delivered to a fake. |
-| MAP cell gauges and throttle trace | Hard-coded literals in the composable. |
+| MAP CELL B gauge | A static, visibly dimmed Victron placeholder (50%, `VEHICLE PENDING`) until the GX feed lands. CELL A is this device's real battery (`DeviceBatterySource`); the throttle trace is a real 30-min speed history. |
 | Jetson detector | Background subtraction. No model, no weights, no inference runtime. |
 | Jetson camera ring | Software complete; thermal + RGB cameras have now been connected and streamed on the box (`--source fake` stays the CI/bring-up path). The **permanent multi-camera ring**, on-vehicle mount/aim, and a trained detector are still to come. |
 | Tracker light aim | `tilt_far` / `tilt_near` / `pan_center` are uncalibrated placeholders. |
@@ -752,7 +801,7 @@ wrong.
 | `EgoStyle.HEX` | Implemented, selected by no concept. |
 | mDNS service discovery | Not built. |
 | Proximity alarm | Not built. |
-| Map touch interaction tests | None. |
+| Map touch interaction tests | Pinch/twist math is extracted into `PinchSession` / `MapGestureMath` and unit-tested; the `awaitPointerEventScope` plumbing in `MapTouchInput` is not. |
 
 ---
 

@@ -95,18 +95,18 @@ Prefix a task with a module to scope it: `./gradlew :beacon:testDebugUnitTest`.
 
 ### Test counts
 
-Measured 2026-08-14, all green:
+Measured 2026-10-22, all green:
 
 | Suite | Tests |
 |---|---|
-| `:app` | **1008** |
-| `:beacon` | **109** |
-| `jetson` | **475** |
+| `:app` | **1,210** |
+| `:beacon` | **180** |
+| `jetson` | **542** |
 
 Tests are JUnit 4 with `kotlinx-coroutines-test` (`runTest`, `advanceUntilIdle`)
-and a `MainDispatcherRule` `TestWatcher` for dispatcher setup. Four `:beacon`
-suites use Robolectric; because `TelemetryBroadcaster` is a process singleton
-they all stop it and clear the injected GPS handle in `@After`.
+and a `MainDispatcherRule` `TestWatcher` for dispatcher setup. Ten `:beacon`
+suites use Robolectric; because `TelemetryBroadcaster` is a process singleton,
+the ones that start it stop it and clear the injected GPS handle in `@After`.
 
 The `:app` suite includes `ThreatProtocolGoldenTest`, which reads
 `protocol/threat-protocol-golden.json` from the repository root by walking up
@@ -203,13 +203,16 @@ unvalidated typo is a crash loop.
 ### Deployment
 
 `scripts/install.sh` provisions to `/opt/zodiac/jetson` and enables + starts
-`zvision.service`. Note what it does **not** do:
+`zvision.service`. Note what it does and does **not** do:
 
-- it copies **only** the `zvision` package — not `zdeck`, not `tests`
+- it copies `zvision` and `zdeck` (source only, not `tests`; zdeck's venv and
+  dependencies are [`DECK.md`](../jetson/DECK.md)'s job), and skips the copy
+  when run from `/opt/zodiac/jetson` itself
 - it installs **only** `zvision.service` — not the deck, track or track-serve
-  units, and not the Stream Deck udev rule
-- the config it writes is `ZVISION_ARGS=--source fake --hz 10`, i.e. **no real
-  cameras** until you edit `/etc/default/zvision`
+  units — plus both udev rules (`70-zodiac-thermal.rules`, which pins the
+  thermal to `/dev/zodiac-thermal`, and `70-zodiac-streamdeck.rules`)
+- it writes `ZVISION_ARGS=--source fake --hz 10` only if `/etc/default/zvision`
+  does not exist, i.e. **no real cameras** until you edit that file
 
 Full procedure — flash, network, prove-with-fake, camera, permanent install, DMX
 — in [`../jetson/DEPLOY.md`](../jetson/DEPLOY.md). `zdeck` deployment is
@@ -220,11 +223,17 @@ Full procedure — flash, network, prove-with-fake, camera, permanent install, D
 
 ## 5. CI
 
-Two GitHub Actions workflows, both on push and pull request to `main`.
+Four GitHub Actions workflows. `android-ci` and `jetson-ci` gate push and pull
+request to `main`; `secrets-scan` runs gitleaks over the full history on every
+push and PR; `pages` publishes `docs/site` to GitHub Pages from the public repo
+only.
 
 ### `.github/workflows/android-ci.yml`
 
-Ubuntu, JDK 17 (Temurin), Android SDK, the project's Gradle wrapper. Five steps,
+Ubuntu, JDK 17 (Temurin), Android SDK, the project's Gradle wrapper.
+`setup-android` is passed `packages: platform-tools`, because its default list
+includes the retired `tools` package, which current runner images no longer
+resolve (AGP fetches the platform and build tools it needs). Five steps,
 in order, **unscoped** so both modules are covered:
 
 1. `./gradlew ktlintCheck`
@@ -249,6 +258,20 @@ Path-filtered to `jetson/**`, `protocol/**` and the workflow file itself. Python
 The `protocol/**` filter is deliberate: a change to the ZTHREAT golden corpus
 must re-run the Python half of the contract, not just the Kotlin half.
 
+### `.github/workflows/secrets-scan.yml`
+
+On every push to `main` and every PR: a full-history checkout
+(`fetch-depth: 0`) and gitleaks 8.30.1 (`gitleaks git --redact --exit-code 1`).
+The public repo is an export with a scrubbed history, and this keeps it that
+way.
+
+### `.github/workflows/pages.yml`
+
+Publishes `docs/site` as the project site through the GitHub Pages actions, on
+a push to `main` that touches `docs/site/**` or the workflow, or by hand
+(`workflow_dispatch`). The job runs only when `github.repository` is
+`pureagave/zodiac-ecliptic`; the private development repo has no Pages site.
+
 ---
 
 ## 6. Deploying to a tablet
@@ -268,6 +291,9 @@ adb shell pm grant org.pureagave.zodiac.control android.permission.ACCESS_COARSE
 adb shell pm grant org.pureagave.zodiac.control android.permission.BLUETOOTH_CONNECT
 adb shell pm grant org.pureagave.zodiac.control android.permission.BLUETOOTH_SCAN
 ```
+
+The Bluetooth pair exists only from API 31, so on the Fires (API 28 and 30) those
+two lines fail with "Unknown permission"; they are for the Samsungs.
 
 Screenshot the app framebuffer with `adb exec-out screencap -p > out.png`. After
 `am start` the first capture can race the launch transition and catch the home
@@ -298,6 +324,9 @@ during testing. Those live in [`DEVICES.md`](DEVICES.md).
 ---
 
 ## 7. Repository conventions
+
+`SYNC.md` and `tasks/` live only in the private development repo; this public
+tree is a filtered export of it, so they are absent here by design.
 
 - **`SYNC.md` is append-only.** Anything significant that is decided, learned or
   built gets a dated entry, newest on top. Never rewrite a past entry — supersede

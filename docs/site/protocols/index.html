@@ -84,7 +84,7 @@
 </ol></div>
 </nav>
   <div class="rail-foot">
-    <p>Built from the repository's own Markdown, verified against the code on 2026&#8209;08&#8209;14.</p>
+    <p>Built from the repository's own Markdown, verified against the code on 2026&#8209;10&#8209;23.</p>
     <p>Offline by design — no network requests.</p>
   </div>
 </aside>
@@ -93,9 +93,10 @@
   <article class="page">
 <p class="kicker">Protocols &#183; the seams</p>
 <h1>The fleet bus</h1>
-<p class="standfirst">The three parts of Zodiac share no code. They agree through two cross-codebase wire formats on
-    the fleet bus &mdash; NMEA and <code>ZTHREAT</code> &mdash; plus a third channel, <code>$ZNAV</code>,
-    over which the tablets share one piece of state among themselves. This section is the byte-level
+<p class="standfirst">The three parts of Zodiac share no code. They agree through three cross-codebase wire formats on
+    the fleet bus &mdash; NMEA, <code>ZTHREAT</code> (with its <code>ZCOVER</code> coverage companion) and
+    <code>$ZVER</code> &mdash; plus <code>$ZNAV</code>, over which the tablets share one piece of state
+    among themselves. This section is the byte-level
     reference &mdash; it is the most valuable document in the repository, because it is the only place
     the codebases actually meet.</p>
 <div class="prose">
@@ -108,8 +109,9 @@
 <thead><tr><th></th><th>Group</th><th class="num">Port</th><th>Sender</th><th>Receivers</th></tr></thead>
 <tbody>
 <tr><th>Telemetry (NMEA)</th><td><code>239.7.7.10</code></td><td class="num">10110</td><td><code>:beacon</code></td><td>Every <code>:app</code> tablet; <code>zvision</code>'s <code>$ZAUD</code> listener</td></tr>
-<tr><th>Threats (ZTHREAT)</th><td><code>239.7.7.20</code></td><td class="num">10120</td><td><code>zvision</code></td><td>Every <code>:app</code> tablet</td></tr>
+<tr><th>Threats (ZTHREAT) + coverage (ZCOVER, 1&nbsp;Hz + on change)</th><td><code>239.7.7.20</code></td><td class="num">10120</td><td><code>zvision</code></td><td>Every <code>:app</code> tablet</td></tr>
 <tr><th>Shared nav target (<code>$ZNAV</code>)</th><td><code>239.7.7.30</code></td><td class="num">10130</td><td>A nav-authority <code>:app</code> tablet</td><td>Every <code>:app</code> tablet</td></tr>
+<tr><th>Build version (<code>$ZVER</code>)</th><td><code>239.7.7.40</code></td><td class="num">10140</td><td>Every node: <code>:beacon</code>, every <code>:app</code> tablet, <code>zvision</code></td><td>Every <code>:app</code> tablet (log viewer FLEET tab)</td></tr>
 </tbody>
 </table>
 </div>
@@ -120,22 +122,24 @@
 <p><code>$ZNAV</code> is the newest channel and the only <strong>app-to-app</strong> one: the fleet's
 drive-to destination, so every tablet's DRIVER HUD points the same way. It is single-language
 (<code>:app</code> only), so unlike NMEA and <code>ZTHREAT</code> it carries no cross-language drift
-risk. A fourth channel, <code>$ZVER</code> (<code>239.7.7.40:10140</code>), is <strong>in
-progress</strong> for fleet build-version reporting. See
+risk. <code>$ZVER</code> (<code>239.7.7.40:10140</code>) carries each node's build version every
+10&nbsp;s; the tablets show the roster in the log viewer's FLEET tab, and a golden corpus pins its
+three implementations together. See
 <a href="../app/map.html#nav-share">shared destination</a> and the
 <a href="#all">bus-channel status table</a> below.</p>
 
 <pre class="diagram"><code>TELEMETRY_GROUP = 239.7.7.10   TELEMETRY_PORT = 10110    TTL = 1
 THREAT_GROUP    = 239.7.7.20   THREAT_PORT    = 10120
 NAV_GROUP       = 239.7.7.30   NAV_PORT       = 10130    ($ZNAV, :app &lt;-&gt; :app)
-VER_GROUP       = 239.7.7.40   VER_PORT       = 10140    ($ZVER, in progress)</code></pre>
+VERSION_GROUP   = 239.7.7.40   VERSION_PORT   = 10140    ($ZVER, every node)</code></pre>
 
 <h2 id="double">Every sender transmits twice</h2>
 
-<p>Each datagram goes out once to the multicast group and once to the /24 subnet-directed broadcast
-(falling back to <code>255.255.255.255</code> if the local IP cannot be determined). Some access
-points silently drop multicast, and a fleet that goes blind because of an AP setting is not
-acceptable.</p>
+<p>Each datagram goes out once to the multicast group and once to a subnet-directed broadcast. Some
+access points silently drop multicast, and a fleet that goes blind because of an AP setting is not
+acceptable. The beacon derives the broadcast address from the DHCP netmask (falling back to /24,
+then to <code>255.255.255.255</code>); the <code>:app</code> senders and <code>zvision</code> assume
+/24.</p>
 
 <p><strong>Every receiver binds the wildcard address</strong> on the port <em>and</em> joins the
 group, so it gets whichever copy arrives. The consequence is duplicate delivery &mdash; which is
@@ -179,7 +183,8 @@ discipline, not a mechanism.</p>
 <tr><th>Sensor channels</th><td><code>:beacon</code></td><td>All tablets</td><td><code>$ZAUD</code> <code>$ZENV</code> <code>$ZSHK</code> <code>$ZBCN</code> <code>$ZODO</code></td><td><span class="chip ok">Built</span></td></tr>
 <tr><th>Thermal threats</th><td><code>zvision</code></td><td>All tablets, DMX light</td><td><code>ZTHREAT</code> frames</td><td><span class="chip unproven">Both ends built; cameras now streaming, ring &amp; detector pending</span></td></tr>
 <tr><th>Shared nav target (<code>$ZNAV</code>)</th><td>Nav-authority tablet (S9+, A54)</td><td>All tablets</td><td>Active drive-to target, <code>239.7.7.30:10130</code></td><td><span class="chip ok">Built &amp; verified device-to-device</span></td></tr>
-<tr><th>Build-version report (<code>$ZVER</code>)</th><td>Every tablet</td><td>All tablets</td><td>Fleet build identity, <code>239.7.7.40:10140</code></td><td><span class="chip unproven">In progress</span></td></tr>
+<tr><th>Camera coverage (<code>ZCOVER</code>)</th><td><code>zvision</code></td><td>All tablets</td><td>Arcs a live camera can see, <code>239.7.7.20:10120</code></td><td><span class="chip ok">Built</span></td></tr>
+<tr><th>Build-version report (<code>$ZVER</code>)</th><td>Every node (beacon, tablets, <code>zvision</code>)</td><td>All tablets</td><td>Fleet build identity, <code>239.7.7.40:10140</code></td><td><span class="chip ok">Built</span></td></tr>
 <tr><th>Vehicle commands</th><td>&mdash;</td><td>Vehicle</td><td>Heading / speed</td><td><span class="chip none">Planned &mdash; transports are fake</span></td></tr>
 <tr><th>Raw thermal video</th><td><code>zvision</code></td><td>Opt-in viewers</td><td>MJPEG / RTSP</td><td><span class="chip none">Planned</span></td></tr>
 </tbody>
@@ -189,7 +194,7 @@ discipline, not a mechanism.</p>
 <p>mDNS / DNS-SD (<code>NsdManager</code>) for richer service discovery and health remains
 planned.</p>
 
-<h2 id="next">The two formats</h2>
+<h2 id="next">The cross-codebase formats</h2>
 
 <ul class="cards">
   <li class="card">
@@ -208,10 +213,17 @@ planned.</p>
     <p class="card-links"><a href="zthreat.html">Read the frame format &rarr;</a>
       <a href="golden-corpus.html">The corpus &rarr;</a></p>
   </li>
+  <li class="card">
+    <p class="card-eyebrow">every node &#8594; :app</p>
+    <h3><code>$ZVER</code> build version</h3>
+    <p>An NMEA-style sentence every node sends every 10&nbsp;s: who it is and which build it runs.
+    Three hand-written implementations, pinned by their own golden corpus.</p>
+    <p class="card-links"><a href="nmea.html#zver">Read the grammar &rarr;</a></p>
+  </li>
 </ul>
 
 </div>
-<p class="srcnote"><b>Converted from</b><br><code>docs/PROTOCOLS.md &sect;1, &sect;5</code> &middot; <code>ARCHITECTURE.md &sect;3</code> &middot; <code>README.md</code></p>
+<p class="srcnote"><b>Converted from</b><br><code>docs/PROTOCOLS.md &sect;1, &sect;5, &sect;6</code> &middot; <code>ARCHITECTURE.md &sect;3</code> &middot; <code>README.md</code></p>
 
 <nav class="pager" aria-label="Page navigation"><a class="prev" href="../system/status.html"><span class="pager-dir">Previous</span><span class="pager-name">What is and isn&#x27;t built</span></a><a class="next" href="../protocols/nmea.html"><span class="pager-dir">Next</span><span class="pager-name">NMEA telemetry</span></a></nav>
   </article>

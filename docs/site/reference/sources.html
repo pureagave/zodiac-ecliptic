@@ -84,7 +84,7 @@
 </ol></div>
 </nav>
   <div class="rail-foot">
-    <p>Built from the repository's own Markdown, verified against the code on 2026&#8209;08&#8209;14.</p>
+    <p>Built from the repository's own Markdown, verified against the code on 2026&#8209;10&#8209;23.</p>
     <p>Offline by design — no network requests.</p>
   </div>
 </aside>
@@ -119,9 +119,9 @@
 <tr><th><code>docs/DEVICES.md</code></th><td>Hardware role map and per-device gotchas</td><td><a href="../system/devices.html">Devices and roles</a></td></tr>
 <tr><th><code>docs/BUILD.md</code></th><td>Build, test, deploy, and the exact CI gates</td><td><a href="../reference/build.html">Build, test and CI</a></td></tr>
 <tr><th><code>docs/KIOSK.md</code></th><td>Device-owner provisioning</td><td><a href="../reference/kiosk.html">Kiosk provisioning</a></td></tr>
-<tr><th><code>docs/AUDIT-2026-08-09.md</code></th><td>Historical: the 20-finding Android audit and its evidence. <strong>All closed.</strong> Kept because several fixes are load-bearing design decisions that are easy to undo by accident</td><td><a href="../system/status.html#audit">Status &rarr; the audits</a>, and the individual subsystem pages</td></tr>
-<tr><th><code>docs/AUDIT-2026-08-13.md</code></th><td>The eight-agent fleet-wide bug-hunt catalogue (~40 findings; every in-scope P1/P2 fixed bar two deferred for on-hardware validation)</td><td><a href="../system/status.html#audit">Status &rarr; the audits</a></td></tr>
-<tr><th><code>docs/AUDIT-2026-08-13-resilience.md</code></th><td>&ldquo;Does the fleet come back by itself after a power event?&rdquo; &mdash; drove the shipped tablet/Jetson self-recovery work</td><td><a href="../system/status.html#audit">Status &rarr; the audits</a></td></tr>
+<tr><th><code>docs/AUDIT-2026-08-09.md</code></th><td>Historical: the 20-finding Android audit and its evidence <em>(private development repo only &mdash; not in this tree)</em>. <strong>All closed.</strong> Kept because several fixes are load-bearing design decisions that are easy to undo by accident</td><td><a href="../system/status.html#audit">Status &rarr; the audits</a>, and the individual subsystem pages</td></tr>
+<tr><th><code>docs/AUDIT-2026-08-13.md</code></th><td>The eight-agent fleet-wide bug-hunt catalogue (~40 findings; every in-scope P1/P2 fixed bar two deferred for on-hardware validation) <em>(private development repo only &mdash; not in this tree)</em></td><td><a href="../system/status.html#audit">Status &rarr; the audits</a></td></tr>
+<tr><th><code>docs/AUDIT-2026-08-13-resilience.md</code></th><td>&ldquo;Does the fleet come back by itself after a power event?&rdquo; &mdash; drove the shipped tablet/Jetson self-recovery work <em>(private development repo only &mdash; not in this tree)</em></td><td><a href="../system/status.html#audit">Status &rarr; the audits</a></td></tr>
 <tr><th><code>docs/README.md</code></th><td>The repository's own doc index and conventions</td><td>This page</td></tr>
 </tbody>
 </table>
@@ -176,9 +176,9 @@
 <table>
 <thead><tr><th>Source</th><th>What it is</th><th>Carried by</th></tr></thead>
 <tbody>
-<tr><th><code>SYNC.md</code></th><td>Append-only dated decision log, newest on top &mdash; the project's working memory. <strong>Never rewritten</strong>; a later entry supersedes an earlier one</td><td>Cited where a decision's history matters; not reproduced</td></tr>
-<tr><th><code>tasks/open.md</code></th><td>Active work items, with the live picture at the top and older backlog below</td><td>Every &ldquo;outstanding&rdquo; and &ldquo;open&rdquo; callout on this site</td></tr>
-<tr><th><code>tasks/done.md</code></th><td>Completed work</td><td>&mdash;</td></tr>
+<tr><th><code>SYNC.md</code></th><td>Append-only dated decision log, newest on top &mdash; the project's working memory. <strong>Never rewritten</strong>; a later entry supersedes an earlier one <em>(private development repo only &mdash; not in this tree)</em></td><td>Cited where a decision's history matters; not reproduced</td></tr>
+<tr><th><code>tasks/open.md</code></th><td>Active work items, with the live picture at the top and older backlog below <em>(private development repo only &mdash; not in this tree)</em></td><td>Every &ldquo;outstanding&rdquo; and &ldquo;open&rdquo; callout on this site</td></tr>
+<tr><th><code>tasks/done.md</code></th><td>Completed work <em>(private development repo only &mdash; not in this tree)</em></td><td>&mdash;</td></tr>
 <tr><th><code>CLAUDE.md</code></th><td>Repository guidance for AI assistants &mdash; the project's own summary of its architecture and conventions</td><td>Cross-checked against the code-verified docs; where it disagreed, the corrected doc won</td></tr>
 </tbody>
 </table>
@@ -195,12 +195,12 @@
     decision's <em>why</em> lives only there.</li>
     <li><strong>The full audit evidence.</strong> The three audits &mdash; the 2026-08-09 20-finding
     review and the two 2026-08-13 fleet-wide passes &mdash; are summarised on
-    <a href="../system/status.html#audit">Status</a>; the finding-by-finding detail is best read in
-    the originals with the code open.</li>
+    <a href="../system/status.html#audit">Status</a>; the finding-by-finding detail lives in the
+    private development repo.</li>
     <li><strong><code>jetson/sensor-pod-assembly.svg</code>.</strong> The assembly diagram is a
     repository asset and is referenced rather than reproduced, because it could not be regenerated
     faithfully.</li>
-    <li><strong>Low-level backlog items</strong> in <code>tasks/open.md</code> that are pure code
+    <li><strong>Low-level backlog items</strong> in the private <code>tasks/open.md</code> that are pure code
     hygiene (file splits, KDoc notes, lint config) rather than facts about the system.</li>
   </ul>
 </div>

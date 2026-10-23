@@ -22,7 +22,7 @@ receiving them.
 `minUpdateDistance = 1 m`. That's a minimum *displacement*: Android holds every
 fix back until the device moves that far. A parked vehicle almost never moves
 1 m, so only the occasional noise excursion delivered a fix, the freshness check
-demoted the source in the gaps, and failover bounced the fleet to a primary that
+demoted the source in the gaps, and failover bounced the hero to a primary that
 wasn't there. **Every bench test was done while driving, which hid it
 completely.**
 

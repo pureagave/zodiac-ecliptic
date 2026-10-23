@@ -84,7 +84,7 @@
 </ol></div>
 </nav>
   <div class="rail-foot">
-    <p>Built from the repository's own Markdown, verified against the code on 2026&#8209;08&#8209;14.</p>
+    <p>Built from the repository's own Markdown, verified against the code on 2026&#8209;10&#8209;23.</p>
     <p>Offline by design — no network requests.</p>
   </div>
 </aside>
@@ -93,7 +93,7 @@
   <article class="page">
 <p class="kicker">:app &#183; the cockpit</p>
 <h1>GPS sourcing</h1>
-<p class="standfirst">Fire tablets have no built-in GNSS, and the fleet is 8&ndash;10 tablets in one vehicle, so a
+<p class="standfirst">Fire tablets have no built-in GNSS, and the fleet is four tablets in one vehicle today, so a
     single shared sensor hub broadcasts on the car's WiFi rather than per-tablet receivers. The
     architecture is a pluggable <code>LocationSource</code>, parallel to the transport adapter
     pattern &mdash; except that unlike the transports, <strong>these are real</strong>.</p>
@@ -112,7 +112,7 @@
 <thead><tr><th>Type</th><th>Implementation</th><th>Notes</th></tr></thead>
 <tbody>
 <tr><th><code>FAKE</code></th><td><code>FakeLocationSource</code></td><td>Integrating dead-reckoner around the Golden Spike, driven by the debug chips; <span class="val">500&nbsp;ms</span> tick</td></tr>
-<tr><th><code>SYSTEM</code></th><td><code>SystemLocationSource</code></td><td>Android <code>LocationManager</code> <code>GPS_PROVIDER</code> behind an injectable handle; <span class="val">1&nbsp;s</span> / <span class="val">1&nbsp;m</span></td></tr>
+<tr><th><code>SYSTEM</code></th><td><code>SystemLocationSource</code></td><td>Android <code>LocationManager</code> <code>GPS_PROVIDER</code> behind an injectable handle; <span class="val">1&nbsp;s</span> / <span class="val">0&nbsp;m</span> &mdash; no displacement filter: at BRC 2026 a 1&nbsp;m filter withheld fixes from a parked vehicle and the readout flapped FIX/NO FIX</td></tr>
 <tr><th><code>BLE</code></th><td><code>BleLocationSource</code></td><td>Bluetooth <strong>Classic SPP</strong> despite the name; matches paired device names against a GPS-receiver regex</td></tr>
 <tr><th><code>USB</code></th><td><code>UsbLocationSource</code></td><td><code>usb-serial-for-android</code>, 9600 8N1, lines reassembled by <code>NmeaLineAssembler</code></td></tr>
 <tr><th><code>NET</code></th><td><code>NetworkLocationSource</code></td><td>The fleet path &mdash; shipped and verified end to end</td></tr>
@@ -163,10 +163,9 @@ rebuilding is the only way to re-join a group after a router reboot.</li>
 </ul>
 
 <div class="note caveat">
-  <span class="label">Outstanding</span>
-  <p><code>BleLocationSource</code>'s <code>Error</code> state is still <strong>terminal</strong>.
-  NET got capped re-bind plus a silence-triggered rejoin on 2026-08-10; BLE has the same shape and
-  did not.</p>
+  <span class="label">Resolved</span>
+  <p><code>BleLocationSource</code> and <code>UsbLocationSource</code> now self-heal on the same
+  capped exponential backoff as NET; an I/O error is no longer terminal.</p>
 </div>
 
 <h2 id="failover">Failover</h2>
@@ -188,7 +187,9 @@ the fallback is warm.</p>
   <code>SystemLocationSource</code> originally had no freshness check, so a frozen fix would satisfy
   the liveness test forever: beacon dies &rarr; failover engages correctly &rarr; the tablet loses
   sky (dash mount, dust) &rarr; the last fix stays <code>Active</code> indefinitely, and by the
-  project's no-badge decision nothing on screen says you are on backup. It now carries
+  original no-badge decision nothing on screen said you were on backup. (That decision was later
+  reversed: the source line now reads <code>&#9680; LOCAL BACKUP</code> while failover is engaged,
+  <code>&#9679; ON BEACON</code> otherwise.) It now carries
   <code>FixFreshness</code> plus a watchdog on the BLE pattern, with an injectable clock.
   Provider-disabled is surfaced distinctly as <code>Error(ADAPTER_UNAVAILABLE)</code> rather than as
   staleness &mdash; staleness is transient and may self-heal, a switched-off provider will not.</p>
@@ -227,7 +228,7 @@ with a u-blox USB GNSS and a roof antenna is the planned replacement. The travel
 AP / DHCP role either way.</p>
 
 </div>
-<p class="srcnote"><b>Converted from</b><br><code>ARCHITECTURE.md &sect;4.5, &sect;4.6</code> &middot; <code>CLAUDE.md</code> &middot; <code>docs/AUDIT-2026-08-09.md A3</code> &middot; <code>tasks/open.md</code></p>
+<p class="srcnote"><b>Converted from</b><br><code>ARCHITECTURE.md &sect;4.5, &sect;4.6</code> &middot; <code>CLAUDE.md</code> &middot; <code>docs/AUDIT-2026-08-09.md A3</code> (private dev repo) &middot; <code>tasks/open.md</code> (private dev repo)</p>
 
 <nav class="pager" aria-label="Page navigation"><a class="prev" href="../app/architecture.html"><span class="pager-dir">Previous</span><span class="pager-name">Layers &amp; state</span></a><a class="next" href="../app/map.html"><span class="pager-dir">Next</span><span class="pager-name">Playa map &amp; navigation</span></a></nav>
   </article>

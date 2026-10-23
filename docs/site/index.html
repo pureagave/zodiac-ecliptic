@@ -84,7 +84,7 @@
 </ol></div>
 </nav>
   <div class="rail-foot">
-    <p>Built from the repository's own Markdown, verified against the code on 2026&#8209;08&#8209;14.</p>
+    <p>Built from the repository's own Markdown, verified against the code on 2026&#8209;10&#8209;23.</p>
     <p>Offline by design — no network requests.</p>
   </div>
 </aside>
@@ -106,12 +106,13 @@ unreliable; nothing safety-relevant depends on it.</p>
 
 <h2 id="flow">How the three parts talk</h2>
 
-<p>The three codebases <strong>share no code</strong>. They agree through two documented wire
-formats &mdash; NMEA sentences and <code>ZTHREAT</code> frames &mdash; and both are pinned by tests.
-Those two formats are the spine of the whole system, which is why
+<p>The three codebases <strong>share no code</strong>. They agree through documented wire
+formats, all pinned by tests. Two carry the realtime data &mdash; NMEA sentences and
+<code>ZTHREAT</code> frames &mdash; and they are the spine of the whole system, which is why
 <a href="protocols/index.html">Protocols</a> gets its own section here. The tablets also share one
 piece of state among <em>themselves</em> &mdash; the drive-to destination &mdash; over a third
-multicast channel, <code>$ZNAV</code>.</p>
+multicast channel, <code>$ZNAV</code>, and every node announces its build version over a fourth,
+<code>$ZVER</code> (239.7.7.40:10140).</p>
 
 
 <figure class="flow">
@@ -119,7 +120,7 @@ multicast channel, <code>$ZNAV</code>.</p>
   <title id="flow-title">How the three parts of Zodiac talk to each other</title>
   <desc id="flow-desc">The beacon phone broadcasts NMEA telemetry to multicast group 239.7.7.10 port 10110
   plus a subnet broadcast copy. The Jetson vision box broadcasts ZTHREAT frames to 239.7.7.20 port 10120
-  plus a subnet broadcast copy. Both are received by the fleet of eight to ten Android tablets running the
+  plus a subnet broadcast copy. Both are received by the fleet of Android tablets (four today) running the
   cockpit app. The tablets also share a drive-to destination among themselves over a third multicast
   channel, $ZNAV, on 239.7.7.30 port 10130. The Jetson also listens to the beacon's audio-level channel,
   and drives a DMX moving-head tracker light over a separate DMX cable, outside the network.</desc>
@@ -148,7 +149,7 @@ multicast channel, <code>$ZNAV</code>.</p>
 
   <!-- tablets -->
   <rect class="f-node" x="330" y="236" width="240" height="86" rx="3"></rect>
-  <text class="f-title" x="348" y="264">:app &#183; 8&#8211;10 tablets</text>
+  <text class="f-title" x="348" y="264">:app &#183; tablets</text>
   <text class="f-sub" x="348" y="284">RADAR / MAP / DRIVER</text>
   <text class="f-sub" x="348" y="298">live Black Rock City map</text>
   <text class="f-sub" x="348" y="312">threat HUD &#183; passenger cards</text>
@@ -185,7 +186,7 @@ multicast channel, <code>$ZNAV</code>.</p>
   <text class="f-scope" x="24" y="358">VEHICLE WIFI &#183; TRAVEL ROUTER (AP + DHCP) &#183; SINGLE /24 &#183; MULTICAST TTL 1 &#8212; NOTHING LEAVES THE VEHICLE</text>
 </svg>
 </figure>
-<p class="caption">All three multicast channels are one-to-many with a subnet-broadcast copy &mdash; the two realtime streams (NMEA, ZTHREAT) and the tablets' shared drive-to ($ZNAV). Nothing unicasts, nothing handshakes, nothing has a hardcoded IP.</p>
+<p class="caption">All four multicast channels are one-to-many with a subnet-broadcast copy &mdash; the two realtime streams (NMEA, ZTHREAT), the tablets' shared drive-to ($ZNAV) and every node's build version ($ZVER, not drawn). Nothing unicasts, nothing handshakes, nothing has a hardcoded IP.</p>
 
 
 <h2 id="parts">The three parts</h2>
@@ -263,21 +264,24 @@ fall where a feature list would suggest.</p>
   <li>
     <span class="statboard-name">:app &mdash; the cockpit</span>
     <span class="chip ok">Built &amp; verified</span>
-    <span class="statboard-note">All three concepts, playa map, routing, GPS sourcing including
-    NET, burn-in, kiosk, logging, passenger display.</span>
+    <span class="statboard-note">The hero cockpit ran on the vehicle at Black Rock City 2026, on
+    its own GNSS after a GPS bug was found and fixed on site. All three concepts, playa map,
+    routing, GPS sourcing including NET, burn-in, kiosk, logging, passenger display; the whole
+    fleet was tested together on the vehicle network before the event.</span>
   </li>
   <li>
     <span class="statboard-name">:beacon &mdash; the sensor hub</span>
     <span class="chip ok">Built &amp; verified</span>
-    <span class="statboard-note">GPS and compass proven end to end; all seven sentence types under
-    test. The five sensor channels have not yet been exercised in a moving vehicle.</span>
+    <span class="statboard-note">GPS and compass proven end to end; ran on the vehicle at Black Rock
+    City 2026; all seven sentence types under test. The five sensor channels have not yet been exercised in a moving vehicle.</span>
   </li>
   <li>
     <span class="statboard-name">jetson/ &mdash; the edge box</span>
     <span class="chip unproven">Software built, cameras now streaming</span>
     <span class="statboard-note">ZTHREAT bus proven with <code>--source fake</code>; thermal + RGB
-    cameras now connected and streaming on the box; boot-wedge self-heal proven on hardware; DMX
-    fixture characterised; Stream Deck driven on real hardware. <strong>The permanent ring, on-vehicle
+    cameras connected and streaming on the box on the bench; the box is installed in the
+    vehicle, but the cameras are not yet mounted and <code>zvision</code> has not run there; boot-wedge self-heal proven on hardware; DMX
+    fixture characterised; Stream Deck driven on real hardware. <strong>The permanent ring, camera
     mount/aim and a trained detector are still to come.</strong></span>
   </li>
   <li>
@@ -312,12 +316,12 @@ fall where a feature list would suggest.</p>
 <pre class="diagram"><code>app/            :app      &#8212; the Android cockpit (org.pureagave.zodiac.control)
 beacon/         :beacon   &#8212; the headless sensor hub (org.pureagave.zodiac.beacon)
 jetson/         zvision + zdeck &#8212; the Python edge box, and its own docs
-protocol/       cross-language wire contracts (the ZTHREAT golden corpus)
-docs/           build, protocols, devices, kiosk provisioning, audits
+protocol/       cross-language wire contracts (golden corpora)
+docs/           build, protocols, devices, kiosk provisioning, screenshots
 design/         UI concept docs and design history
-tasks/          open.md (active work) / done.md
-tools/          offline asset pipelines (art pre-render)
-SYNC.md         append-only decision log &#8212; the project's working memory</code></pre>
+tools/          offline asset pipelines (art pre-render) and bus listeners
+FIELD-NOTES.md  what the hardware taught us, measured
+CLAUDE.md       working guide for the AI coding agents used on this project</code></pre>
 
 <h2 id="data">Data sources and licence</h2>
 
@@ -336,8 +340,8 @@ covered by that licence &mdash; it is used under the Innovate Terms of Service, 
 <code>NOTICE</code> in the repository carries the full third-party attribution.</p>
 
 <p style="margin-top:2.5em;padding-top:1.2em;border-top:1px solid var(--rule);font-size:.85em;color:var(--ink-mute)">
-  <strong>Last updated 2026-08-14.</strong> The repository Markdown (<code>README.md</code>,
-  <code>SYNC.md</code>) remains the source of truth for the very latest.
+  <strong>Last updated 2026-10-23.</strong> The repository Markdown (<code>README.md</code>,
+  <code>docs/OVERVIEW.md</code>) remains the source of truth for the very latest.
 </p>
 
 </div>

@@ -84,7 +84,7 @@
 </ol></div>
 </nav>
   <div class="rail-foot">
-    <p>Built from the repository's own Markdown, verified against the code on 2026&#8209;08&#8209;14.</p>
+    <p>Built from the repository's own Markdown, verified against the code on 2026&#8209;10&#8209;23.</p>
     <p>Offline by design — no network requests.</p>
   </div>
 </aside>
@@ -122,6 +122,16 @@ sentence types.</p>
 
 <p>Every sentence goes to multicast group <code>239.7.7.10:10110</code> <em>and</em> a
 subnet-directed broadcast. <a href="../protocols/nmea.html">Field-by-field definitions &rarr;</a></p>
+
+<p>Separately, the beacon announces its build as <code>$ZVER</code> on
+<code>239.7.7.40:10140</code> every 10&nbsp;s, so the tablets' FLEET roster can spot a stale hub.
+<a href="../protocols/nmea.html#zver">$ZVER grammar &rarr;</a></p>
+
+<p><strong>GPS test mode</strong>, armed over adb only, makes the beacon synthesize
+<code>$GPGGA</code>/<code>$GPRMC</code>/<code>$GPHDT</code> for any point or moving track in place of
+real GNSS, marked honestly as fix quality <code>8</code> (NMEA &ldquo;Simulation mode&rdquo;) with a
+red <code>&#9888; GPS SIMULATED</code> banner on the phone. It is memory-only, so a reboot always
+restores real GNSS. <a href="../protocols/nmea.html#gps-test-mode">How it works &rarr;</a></p>
 
 <h2 id="rules">Design rules that matter operationally</h2>
 
@@ -162,9 +172,9 @@ a roof antenna. The travel router keeps the AP and DHCP role in both cases.
 
 <ul class="statboard">
   <li><span class="statboard-name">GPS + compass end to end</span><span class="chip ok">Verified</span>
-    <span class="statboard-note">Proven against real tablets on the fleet bus.</span></li>
+    <span class="statboard-note">Proven against real tablets on the fleet bus, and ran on the vehicle at Black Rock City 2026 over the vehicle WiFi, feeding position to the hero cockpit.</span></li>
   <li><span class="statboard-name">All seven sentence types</span><span class="chip ok">Under test</span>
-    <span class="statboard-note">109 unit tests; <code>Nmea.checksum</code> validated against published NMEA 0183 vectors after an <code>xor</code>&rarr;<code>or</code> mutation passed all 35 of the older tests.</span></li>
+    <span class="statboard-note">180 unit tests; <code>Nmea.checksum</code> validated against published NMEA 0183 vectors after an <code>xor</code>&rarr;<code>or</code> mutation passed all 35 of the older tests.</span></li>
   <li><span class="statboard-name">The five sensor channels in a moving vehicle</span><span class="chip unproven">Not yet exercised</span>
     <span class="statboard-note">Beacon channels + auto-dim end to end on the tablets is an open item.</span></li>
   <li><span class="statboard-name">Production Pi + u-blox hub</span><span class="chip none">Not built</span>
@@ -202,12 +212,12 @@ a roof antenna. The travel router keeps the AP and DHCP role in both cases.
 
 <div class="note caveat">
   <span class="label">Outstanding &mdash; interface binding</span>
-  <p>Beacon network targets are computed once and the socket is never bound to the WiFi
-  <code>Network</code>, so traffic can leave the wrong interface silently.</p>
+  <p>Broadcast targets are re-resolved every 5&nbsp;s, but the socket is never bound to the WiFi
+  <code>Network</code>, so traffic can still leave the wrong interface silently.</p>
 </div>
 
 </div>
-<p class="srcnote"><b>Converted from</b><br><code>README.md</code> &middot; <code>ARCHITECTURE.md &sect;5</code> &middot; <code>tasks/open.md</code> &middot; <code>docs/AUDIT-2026-08-09.md</code></p>
+<p class="srcnote"><b>Converted from</b><br><code>README.md</code> &middot; <code>ARCHITECTURE.md &sect;5</code></p>
 
 <nav class="pager" aria-label="Page navigation"><a class="prev" href="../app/performance.html"><span class="pager-dir">Previous</span><span class="pager-name">Performance backlog</span></a><a class="next" href="../beacon/channels.html"><span class="pager-dir">Next</span><span class="pager-name">The seven channels</span></a></nav>
   </article>

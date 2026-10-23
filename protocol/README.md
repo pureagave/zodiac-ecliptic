@@ -88,3 +88,30 @@ runs fixed inputs through `zvision.coverage_protocol` and writes down whatever
 the code produces. **Do not hand-edit the JSON**; change the format and re-run
 the tool. ZCOVER is a *new* contract, so it never required touching the ZTHREAT
 corpus.
+
+## `version-protocol-golden.json` — the `$ZVER` sentence (FLEET-1)
+
+The build-version announcement every node sends on `239.7.7.40:10140` every
+10 s, so the tablets can show which build each node runs (the log viewer's FLEET
+tab). Byte reference: [`docs/PROTOCOLS.md`](../docs/PROTOCOLS.md) §6. Three
+hand-written implementations:
+
+| | file | role |
+|---|---|---|
+| tablets | `app/.../core/telemetry/FleetVersion.kt` (`FleetVersionProtocol`) | build + parse |
+| edge box | `jetson/zvision/version_protocol.py` | build + parse |
+| beacon | `beacon/.../Nmea.kt` (`zver`) | build only |
+
+All three test suites read this file and fail loudly if it is missing:
+
+- `app/src/test/java/.../core/telemetry/FleetVersionProtocolGoldenTest.kt`
+- `beacon/src/test/java/.../BeaconVersionGoldenTest.kt`
+- `jetson/tests/test_version_protocol_golden.py`
+
+It has a checked-in generator, `protocol/gen-version-golden.py`, which is a
+**third, independent** encoder: it computes the checksum and joins the fields
+itself and imports none of the implementations, so a vector agrees with an
+implementation only if that implementation is right. **Do not regenerate a red
+suite green.** A suite failing against the corpus means an implementation
+drifted; fix the implementation. Regenerate only when the format is meant to
+change, then confirm all three suites pass.

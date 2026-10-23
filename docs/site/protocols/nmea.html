@@ -84,7 +84,7 @@
 </ol></div>
 </nav>
   <div class="rail-foot">
-    <p>Built from the repository's own Markdown, verified against the code on 2026&#8209;08&#8209;14.</p>
+    <p>Built from the repository's own Markdown, verified against the code on 2026&#8209;10&#8209;23.</p>
     <p>Offline by design — no network requests.</p>
   </div>
 </aside>
@@ -134,6 +134,9 @@ hands over a message with no trailing newline.</p>
 <p>The broadcaster also <em>sniffs</em> passing GGA sentences for fix quality and satellite count to
 populate <code>$ZBCN</code>, but does not alter them.</p>
 
+<p>While <a href="#gps-test-mode">GPS test mode</a> is armed the passthrough is suppressed entirely:
+no real GNSS sentence is forwarded or sniffed.</p>
+
 <h2 id="consumed">What the tablet consumes</h2>
 
 <div class="tablewrap">
@@ -174,7 +177,7 @@ populate <code>$ZBCN</code>, but does not alter them.</p>
 <tbody>
 <tr><td class="num">2, 3</td><td>Latitude <code>DDMM.MMMM</code>, hemisphere <code>N</code>/<code>S</code></td></tr>
 <tr><td class="num">4, 5</td><td>Longitude <code>DDDMM.MMMM</code>, hemisphere <code>E</code>/<code>W</code></td></tr>
-<tr><td class="num">6</td><td>Fix quality &mdash; must be <code>&gt; 0</code> or the sentence is discarded</td></tr>
+<tr><td class="num">6</td><td>Fix quality &mdash; must be <code>&gt; 0</code> or the sentence is discarded. Quality <code>8</code> = NMEA &ldquo;Simulation mode&rdquo;, emitted only by GPS test mode</td></tr>
 <tr><td class="num">8</td><td>HDOP &rarr; accuracy estimate as <code>hdop &times; 5.0</code> metres</td></tr>
 </tbody>
 </table>
@@ -358,8 +361,10 @@ Consumers diff a monotonic <code>shockCount</code> rather than watching the valu
 <p>Example: <code>$ZBCN,87,1,9,3600*17</code></p>
 
 <p>Emitted every 20th tick (<span class="val">~5&nbsp;s</span>); the same tick persists the lifetime
-odometer. Fields 2 and 3 are sniffed from passing GGA sentences; if none has arrived, the previous
-values persist rather than resetting.</p>
+odometer. Fields 2 and 3 are sniffed from passing GGA sentences. If the most recent GGA is more
+than <span class="val">10&nbsp;s</span> old the beacon reports <code>0</code>/<code>0</code> rather
+than stale values, so a GNSS chip that has gone silent reads as &ldquo;no fix&rdquo;; before the
+first GGA they are <code>0</code>/<code>0</code>.</p>
 
 <p>The tablet's ops footer flags battery <span class="val">&le; 20&nbsp;%</span> and either
 <code>fixQuality &le; 0</code> or <code>satellites &lt; 5</code> in red.</p>
@@ -412,7 +417,8 @@ fire on the first tick.</p>
 <thead><tr><th>Channel</th><th>Trigger</th><th>Effective rate</th></tr></thead>
 <tbody>
 <tr><th>Raw GNSS</th><td>OS NMEA callback</td><td>Whatever the receiver emits (requested &ge; 1&nbsp;Hz)</td></tr>
-<tr><th><code>$GPHDT</code></th><td>Every tick, if heading available</td><td class="num">~4 Hz</td></tr>
+<tr><th><code>$GPHDT</code></th><td>Every tick, if heading available (the sim heading while GPS test mode is armed)</td><td class="num">~4 Hz</td></tr>
+<tr><th><code>$GPGGA</code> / <code>$GPRMC</code> (GPS test mode only)</th><td>Every 4th tick while armed</td><td class="num">~1 Hz</td></tr>
 <tr><th><code>$ZTLM</code></th><td>Every tick</td><td class="num">~4 Hz</td></tr>
 <tr><th><code>$ZENV</code></th><td>Every 8th tick, if lux available</td><td class="num">~0.5 Hz</td></tr>
 <tr><th><code>$ZODO</code></th><td>Every 8th tick</td><td class="num">~0.5 Hz</td></tr>
@@ -427,8 +433,75 @@ fire on the first tick.</p>
 An unchanged value is re-broadcast identically, which is what makes the stream self-healing for a
 tablet that just joined the network.</p>
 
+<h2 id="gps-test-mode">GPS test mode</h2>
+
+<p>The one sanctioned fabrication, for fleet-wide location testing (<code>GpsSim.kt</code>,
+<code>SimGpsReceiver.kt</code>). It is armed and disarmed only over adb: the receiver is registered
+by the running service and guarded by <code>android.permission.DUMP</code>, which the adb shell holds
+and ordinary apps do not. Every extra is a string, so a malformed number rejects the whole command
+instead of silently defaulting.</p>
+
+<pre><code>adb shell am broadcast -a org.pureagave.zodiac.beacon.SIM_GPS --es preset MAN
+adb shell am broadcast -a org.pureagave.zodiac.beacon.SIM_GPS --es lat 40.78325 --es lon -119.20788 --es hdg 90 --es spd 8
+adb shell am broadcast -a org.pureagave.zodiac.beacon.SIM_GPS --es hdg 180 --es spd 8   # turn from the current sim position
+adb shell am broadcast -a org.pureagave.zodiac.beacon.SIM_GPS_OFF</code></pre>
+
+<p>Presets are <code>MAN</code>, <code>TEMPLE</code> and <code>HOME</code>; speed is bounded to
+0&ndash;160&nbsp;kph. Position is dead-reckoned as a pure function of elapsed time, so it never
+drifts. While armed:</p>
+
+<div class="tablewrap">
+<table>
+<thead><tr><th>Channel</th><th>Behaviour</th></tr></thead>
+<tbody>
+<tr><th>Raw GNSS</th><td>Suppressed: not forwarded, not sniffed into <code>$ZBCN</code></td></tr>
+<tr><th><code>$GPGGA</code></th><td>Synthesized every 4th tick (~1&nbsp;Hz): quality <code>8</code>, 12 satellites, HDOP 0.8, altitude 1191.0&nbsp;m (a chosen value, not a measurement)</td></tr>
+<tr><th><code>$GPRMC</code></th><td>Synthesized on the same tick with the sim speed and heading</td></tr>
+<tr><th><code>$GPHDT</code></th><td>Every tick, from the sim heading instead of the compass</td></tr>
+<tr><th><code>$ZTLM</code></th><td>Speed field is the sim speed; pitch and roll stay real</td></tr>
+<tr><th><code>$ZBCN</code></th><td>Reports quality <code>8</code> / 12 satellites, so every tablet can see the fix is simulated</td></tr>
+<tr><th><code>$ZODO</code></th><td>Unaffected: fed only by real location updates, so it never accumulates simulated metres</td></tr>
+</tbody>
+</table>
 </div>
-<p class="srcnote"><b>Converted from</b><br><code>docs/PROTOCOLS.md &sect;2</code> &middot; <code>ARCHITECTURE.md &sect;5, &sect;7.1</code></p>
+
+<p>The armed state is <strong>memory-only</strong>: never persisted and cleared on service start and
+stop, so a reboot always restores real GNSS. The beacon's own screen shows a red
+<code>&#9888; GPS SIMULATED</code> banner while it is armed.</p>
+
+<h2 id="zver">$ZVER &mdash; build version</h2>
+
+<p>Not on the beacon's tick loop and not on the telemetry group: every node (the beacon, every
+tablet and <code>zvision</code>) sends it to <code>239.7.7.40:10140</code> every
+<span class="val">10&nbsp;s</span>, so the tablets can show which build each node runs in the log
+viewer's FLEET tab. A peer unheard for <span class="val">35&nbsp;s</span> reads OFFLINE.</p>
+
+<pre><code>$ZVER,&lt;node&gt;,&lt;name&gt;,&lt;base&gt;,&lt;sha&gt;,&lt;dirty&gt;,&lt;epoch&gt;*CC
+e.g. $ZVER,9C1977,SM-X810,0.1.0,8f531e18a,0,1691900000*CC</code></pre>
+
+<div class="tablewrap">
+<table>
+<thead><tr><th>Field</th><th>Grammar</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><th><code>node</code></th><td><code>[A-Z0-9]{1,8}</code></td><td>Stable per-node key (from <code>ANDROID_ID</code> on Android, <code>/etc/machine-id</code> on the Jetson)</td></tr>
+<tr><th><code>name</code></th><td><code>[A-Za-z0-9._-]{1,16}</code></td><td>Human label: device model or hostname</td></tr>
+<tr><th><code>base</code></th><td><code>[0-9A-Za-z.+~-]{1,16}</code></td><td>Version name, e.g. <code>0.1.0</code></td></tr>
+<tr><th><code>sha</code></th><td><code>[0-9a-f]{7,40}</code> or <code>unknown</code></td><td>Build commit</td></tr>
+<tr><th><code>dirty</code></th><td><code>[01]</code></td><td><code>1</code> = modified tree, or unknown</td></tr>
+<tr><th><code>epoch</code></th><td><code>[0-9]{1,10}</code></td><td>Commit time, Unix seconds (<code>0</code> when unknown)</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>Same framing as the other <code>$Z*</code> sentences: a two-hex XOR checksum over the body; the
+parser accepts one or two hex digits in either case and never throws. Every unknown fails toward
+<code>unknown</code>/dirty, so a node that cannot identify its build never reads as current. Three
+hand-written implementations (<code>FleetVersion.kt</code>, <code>version_protocol.py</code> and the
+beacon's <code>Nmea.zver</code>, emit only) are pinned together by
+<code>protocol/version-protocol-golden.json</code>, which all three test suites read.</p>
+
+</div>
+<p class="srcnote"><b>Converted from</b><br><code>docs/PROTOCOLS.md &sect;2, &sect;6</code> &middot; <code>ARCHITECTURE.md &sect;5, &sect;7.1</code></p>
 
 <nav class="pager" aria-label="Page navigation"><a class="prev" href="../protocols/index.html"><span class="pager-dir">Previous</span><span class="pager-name">The fleet bus</span></a><a class="next" href="../protocols/zthreat.html"><span class="pager-dir">Next</span><span class="pager-name">ZTHREAT frames</span></a></nav>
   </article>

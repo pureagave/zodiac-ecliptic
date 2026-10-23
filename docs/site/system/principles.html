@@ -84,7 +84,7 @@
 </ol></div>
 </nav>
   <div class="rail-foot">
-    <p>Built from the repository's own Markdown, verified against the code on 2026&#8209;08&#8209;14.</p>
+    <p>Built from the repository's own Markdown, verified against the code on 2026&#8209;10&#8209;23.</p>
     <p>Offline by design — no network requests.</p>
   </div>
 </aside>
@@ -111,7 +111,7 @@ cache strictly preferred over an empty one.</p>
 publish on fixed multicast groups; any number of subscribers listen. Nothing unicasts, nothing
 handshakes, nothing has a hardcoded IP.</p>
 
-<p>The fleet target is 8&ndash;10 tablets in one vehicle. Per-tablet GPS receivers do not scale for
+<p>The design target is 8&ndash;10 tablets in one vehicle (four today). Per-tablet GPS receivers do not scale for
 that &mdash; Bluetooth GPS pucks cap at roughly five simultaneous clients &mdash; which is the whole
 reason for a single shared sensor hub. <a href="../protocols/index.html">How the bus works &rarr;</a></p>
 
@@ -175,13 +175,11 @@ restarting.</p>
 <p>The repository's own convention, and the one this site follows: <strong>where a doc and the code
 disagree, the code wins.</strong> Where something cannot be verified from the repository &mdash; it
 needs hardware, a device, or the owner's knowledge &mdash; the doc says so rather than guessing,
-and that framing is carried through here. Three such items are open:</p>
+and that framing is carried through here. Two such items are open:</p>
 
 <div class="note caveat">
   <span class="label">Outstanding</span>
   <ul>
-    <li><strong>Field-of-view reference disagrees across the two sides of the vehicle.</strong>
-    Up to 16&deg; at the frame edge. <a href="../protocols/fov-discrepancy.html">Detail</a>.</li>
     <li><strong>HOME is configured, not geocoded.</strong>
     <code>Home.LOCATION</code> comes from the build; a real camp value is usually a geometric
     projection of its address. The authoritative placement comes from the BM API shortly before the event.</li>

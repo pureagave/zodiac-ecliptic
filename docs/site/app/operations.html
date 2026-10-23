@@ -84,7 +84,7 @@
 </ol></div>
 </nav>
   <div class="rail-foot">
-    <p>Built from the repository's own Markdown, verified against the code on 2026&#8209;08&#8209;14.</p>
+    <p>Built from the repository's own Markdown, verified against the code on 2026&#8209;10&#8209;23.</p>
     <p>Offline by design — no network requests.</p>
   </div>
 </aside>
@@ -127,18 +127,12 @@ Samsung with a plain <code>adb pull</code>, no root and no debug build. Default 
   refused.</p>
 </div>
 
-<p><code>FileLogTree</code> is the Timber tree. Writes go through a 256-line channel that drops
-oldest on overflow and drains on IO, so a log call from a render or sensor coroutine costs a
-<code>trySend</code> and cannot stall a frame. The uncaught-exception handler writes synchronously
+<p><code>FileLogTree</code> is the Timber tree. Writes go through a 256-line buffer that drops
+oldest on overflow &mdash; every drop counted in <code>droppedBeforeWrite</code> and shown in the
+log viewer header &mdash; and drains on IO, so a log call from a render or sensor coroutine costs a
+deque push and a doorbell poke and cannot stall a frame. The uncaught-exception handler writes synchronously
 before the process dies.</p>
 
-<div class="note caveat">
-  <span class="label">Outstanding &mdash; one silent loss channel remains</span>
-  <p><code>FileLogTree</code>'s <code>Channel(256, DROP_OLDEST)</code> overflow is still
-  <strong>uncounted</strong>. A burst silently loses lines before they ever reach
-  <code>RollingFileLog</code>, so the on-screen counters cannot see them. This is the last silent
-  loss channel in the logging path.</p>
-</div>
 
 <p>Tagged lifecycle events are the ones that actually get asked about: GPS source selection,
 NET&rarr;SYSTEM failover, vision feed transitions, transport connect, which path served the map, and
@@ -154,6 +148,9 @@ discovery refresh outcomes.</p>
   with &ldquo;Permission denied&rdquo;. On a Fire the hidden <strong>bottom-right long-press log
   viewer</strong> is the only way in &mdash; which is exactly why it exists.</p>
 </div>
+
+<p>The log viewer also has a <strong>FLEET</strong> tab: the roster of every node's build version,
+heard as <code>$ZVER</code> on <code>239.7.7.40:10140</code>, with friendly role names.</p>
 
 <h2 id="art">Pre-rendered art imagery</h2>
 
@@ -182,8 +179,8 @@ itself on resume and no-ops when it has not been provisioned.
   <p><code>locationFallbackActive</code> and <code>commandError</code> used to be written by the
   ViewModel and displayed by nothing &mdash; they looked wired and were not, exactly the shape of
   the <code>mapLoadError</code> bug that gave a blank viewport with no message when the GIS schema
-  changed silently. Rob's call was final on both: no "on backup GPS" badge (recorded 2026-08-06 in
-  <code>SYNC.md</code>), and every vehicle transport is fake so a real send failure cannot occur
+  changed silently. Rob's call at the time was no "on backup GPS" badge (recorded 2026-08-06; since
+  superseded by the <code>&#9680; LOCAL BACKUP</code> source line), and every vehicle transport is fake so a real send failure cannot occur
   in production. Both fields and their sole writers were removed rather than wired up; a failed
   send is now logged via Timber instead of surfaced in UI state.</p>
 </div>
@@ -205,7 +202,7 @@ Jetson is authoritative.</p>
 </div>
 
 </div>
-<p class="srcnote"><b>Converted from</b><br><code>README.md</code> &middot; <code>ARCHITECTURE.md &sect;4.12</code> &middot; <code>docs/BUILD.md &sect;6</code> &middot; <code>tasks/open.md</code></p>
+<p class="srcnote"><b>Converted from</b><br><code>README.md</code> &middot; <code>ARCHITECTURE.md &sect;4.12</code> &middot; <code>docs/BUILD.md &sect;6</code> &middot; <code>tasks/open.md</code> (private dev repo)</p>
 
 <nav class="pager" aria-label="Page navigation"><a class="prev" href="../app/burn-in.html"><span class="pager-dir">Previous</span><span class="pager-name">OLED burn-in</span></a><a class="next" href="../app/performance.html"><span class="pager-dir">Next</span><span class="pager-name">Performance backlog</span></a></nav>
   </article>

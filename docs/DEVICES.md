@@ -12,13 +12,20 @@ they cannot be checked from this repository, and are marked where that matters.
 |---|---|---|---|---|
 | Hero dashboard | Galaxy Tab S9+ (`SM-X810`) | `:app`, RADAR or MAP | 12.4" OLED | In use |
 | Driver night display | Galaxy A54 (`SM-A546V`) | `:app`, DRIVER concept | 6.4" OLED | HUD built; night legibility unverified |
-| Passenger / crew displays | Fire HD 10 (`KFTUWI`), Fire HD 8, spare tablets | `:app`, passenger carousel or RADAR/MAP | LCD | In use |
+| Passenger / crew displays | 2× Fire HD 10 (`KFMAWI` 9th gen, API 28; `KFTUWI` 11th gen, API 30) | `:app`, passenger carousel or RADAR/MAP | LCD | In use; nav followers; cannot be kiosked |
 | Sensor hub | XCover Pro (`SM-G715U`) | `:beacon`, headless | screen off | Built; GPS + compass verified |
-| Vision edge box | Jetson Orin Nano Super | `zvision` | — | Software built; thermal + RGB cameras now streaming on the box; ring/aim/detector pending |
+| Vision edge box | Jetson Orin Nano Super | `zvision` | — | Installed in the vehicle; thermal + RGB cameras stream on the bench, not yet mounted; ring/aim/detector pending |
 | Light control surface | Elgato Stream Deck Mini | `zdeck` | 6 keys | Driven on real hardware |
 | Tracker light | DMX moving head + FTDI USB-DMX | `zvision` / `zdeck` via `olad` | — | Characterised; aim uncalibrated |
 | Network | travel router (AP + DHCP) | — | — | In use |
 | Proximity alarm | ESP32 + 24 GHz radar or LiDAR | — | red beacon | Not built |
+
+**Nav authority follows the OLED split.** The two Samsungs (S9+, A54) are the
+nav-authority tablets: only they may set and broadcast the fleet's shared
+drive-to target over `$ZNAV`; the two Fires adopt it but cannot change it
+locally. Authority is not a toggle: it *is* OLED-device-ness (the same
+`Build.MANUFACTURER != "Amazon"` check burn-in uses), computed once at startup,
+so there is no per-device provisioning step.
 
 ---
 
@@ -106,11 +113,12 @@ driving. One evening on-device at real brightness is the acceptance test.
 
 ### Fire HD 10 — passenger display and performance floor
 
-`KFTUWI` (codename "tungsten"). Operator-recorded: Android 11 / Fire OS 8,
-API 30, arm64-v8a, 1920×1200 in landscape.
+Two of them. `KFTUWI` (11th gen, codename "tungsten"), operator-recorded as
+Android 11 / Fire OS 8, API 30, arm64-v8a, 1920×1200 in landscape; and `KFMAWI`
+(9th gen), Fire OS 7, API 28.
 
-Also a passenger-display target alongside the Fire HD 8 10th gen, which is why
-`:app` targets minSdk 28 rather than 30. Older 8" Fires are Fire OS 6/5 (API
+The 9th gen is why `:app` targets minSdk 28 rather than 30 (the Fire HD 8 10th
+gen, also API 28, is supported for the same reason). Older 8" Fires are Fire OS 6/5 (API
 25/22) and are **not** supported — check any candidate with
 `adb shell getprop ro.build.version.sdk`.
 
@@ -138,9 +146,11 @@ that is for bring-up.
 Roles it fills: GNSS, magnetometer, IMU, microphone level, ambient light,
 shock and its own battery/health telemetry.
 
-**⚠️ This phone must be on permanent vehicle power.** It is the fleet's only
-GNSS — Fire tablets have no receiver at all — so its charge state is a single
-point of failure for *every* tablet's position, nav and drive-to guidance. The
+**⚠️ This phone must be on permanent vehicle power.** It is the only GNSS for
+the Fire tablets, which have no receiver at all; the Samsungs fail over to their
+own GNSS within ~3 s (`FailoverLocationSource`). So its charge state is a single
+point of failure for the Fires' position, nav and drive-to guidance and for the
+beacon sensor channels, not for the hero or driver. The
 design budgets roughly **2-4 days on battery** if vehicle power fails (the
 partial wake lock plus the battery-optimisation exemption deliberately trade
 standby time for a tick loop that keeps running), which is a margin for a failed
@@ -165,13 +175,16 @@ and a roof antenna. The travel router keeps the AP and DHCP role in both cases.
 
 ### Jetson Orin Nano Super
 
-Mounted in the vehicle. Runs `zvision`, `zdeck`, the breadcrumb tracklog service and its
-read-only HTTP server. Its four USB-A connectors are a single onboard 4-port hub.
+Installed in the vehicle; the cameras are not yet mounted, and `zvision` has not
+yet run on the vehicle. It carries `zvision`, `zdeck`, the breadcrumb tracklog
+service and its read-only HTTP server. Its four USB-A connectors are a single
+onboard 4-port hub.
 
 **Do not re-cable the cameras to free a port.** Adding a hub upstream changes
-every `by-path` device path in `ZVISION_ARGS` and the cameras stop resolving. The
-Stream Deck is HID and is found by vendor:product id, so it is immune to that
-trap — which is why it took the fourth port.
+the `by-path` paths the RGB cameras use in `ZVISION_ARGS`, and they stop
+resolving. The thermal is serial-pinned to `/dev/zodiac-thermal` by its udev
+rule and the Stream Deck is found by vendor:product id, so both are immune to
+that trap — which is why the Stream Deck took the fourth port.
 
 Compute is not the bottleneck for this workload; thermal resolution and available
 training data are.
@@ -267,9 +280,10 @@ to `none`.
 A travel router provides the AP and DHCP on a single /24. Starlink is aboard as
 WAN but is treated as non-critical — nothing realtime depends on it.
 
-There are **no hardcoded IPs anywhere.** Both realtime streams ride fixed
-multicast groups compiled into every part, with a subnet-directed broadcast copy
-for access points that drop multicast. See [`PROTOCOLS.md`](PROTOCOLS.md) §1.
+There are **no hardcoded IPs anywhere.** All four fleet streams (NMEA
+`239.7.7.10:10110`, ZTHREAT `.20:10120`, `$ZNAV` `.30:10130`, `$ZVER`
+`.40:10140`) ride fixed multicast groups compiled into every part, with a
+subnet-directed broadcast copy for access points that drop multicast. See [`PROTOCOLS.md`](PROTOCOLS.md) §1.
 
 Fleet target is 8–10 tablets in one vehicle. Per-tablet GPS receivers do not
 scale for that — Bluetooth GPS pucks cap at roughly five simultaneous clients —
