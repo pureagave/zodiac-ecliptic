@@ -25,15 +25,23 @@ unusual set of problems:
 - **No reliable connectivity.** Cell and internet coverage can't be counted on,
   so everything realtime runs on the vehicle's own WiFi and every map, street
   and route is on-device.
-- **Addresses are clock positions.** Streets are concentric rings and radial
-  "clock" streets around a centre point, and the city moves every year.
+- **Addresses are clock positions.** Streets are concentric lettered rings and
+  radial "clock" streets around a centre point, and the city moves every year.
+  Navigation isn't a normal street problem: from the open playa you first have
+  to pick the right entrance into the city, then route through a grid unlike
+  any ordinary city. Even typing in an address needs a Burning Man-specific
+  input, so the cockpit has one.
 - **Dust and heat.** Alkaline dust gets into everything, and days run past 40 °C.
-- **Dark nights full of people.** Pedestrians and bikes, many unlit, around a
-  slow, heavy vehicle with limited sightlines.
+- **Dark nights full of people, and very heavy vehicles.** Visibility from a
+  big art car is difficult and limited, and pedestrians and bikes, many of
+  them unlit, are all around it.
 
-Zodiac itself began life as a picture car (a city taxi) from the 1995 film
-*Judge Dredd*. It has since been repainted bright green and stripped of the
-film's markings. The design language, for the vehicle and every screen, comes
+Zodiac's body began as a picture car, a city taxi from the 1995 film *Judge
+Dredd*. Turning a film prop into a working transport was the real job: the power
+system, the engine and every other system have been rebuilt or added to make it
+a functional vehicle, rolling on huge wheels, with a 4,500 W stage audio system
+on board. It's painted phosphorescent green, so it glows under black light, and
+the film's markings are gone. The design language, for the vehicle and every screen, comes
 from the 80s science fiction I grew up with: *Aliens*, *Star Trek*, *Blade
 Runner*.
 
@@ -99,6 +107,16 @@ box) on the vehicle's network before the event:
 </p>
 
 ## The perception pipeline (built and bench-validated)
+
+**Why thermal.** At night the driver of a big vehicle sees very little around
+it, and many of the people nearby are unlit. A thermal camera sees body heat
+with no light at all, so it works where headlights and visible cameras don't
+(LED headlights give off almost no infrared, so they don't help the low-light
+cameras much either). The plan is a ring of cameras around the vehicle:
+`zvision` fuses them into one full-circle list of the people nearby, the driver
+HUD shows each one as a contact and warns of a collision course, the passenger
+display counts the souls around the vehicle, and the tracking spotlight swings
+onto the most urgent one.
 
 `zvision` reads a FLIR Lepton Ultra Wide thermal camera (160×120, 9 fps,
 through a PureThermal USB board) and USB low-light visible cameras (Sony STARVIS
@@ -208,9 +226,13 @@ still builds and runs; the art and camp markers stay hidden.
 
 ## What I built
 
-I designed the system and the three wire protocols, specified and assembled the
-edge hardware (Jetson, thermal and visible cameras, DMX light, control deck), and
-wrote the software with AI coding agents working under my direction and review.
+I built Zodiac itself, turning a film prop into a working mutant vehicle, and I
+conceived and built ECLIPTIC end to end: what it does, how the parts work
+together, the hardware and components it takes to realise it, and the taste
+behind every screen. I designed the system and its three wire protocols,
+specified and assembled the edge hardware (Jetson, thermal and visible cameras,
+DMX light, control deck), and wrote the software with AI coding agents working
+under my direction and review.
 [`CLAUDE.md`](CLAUDE.md) is the working guide those agents follow.
 
 ## License

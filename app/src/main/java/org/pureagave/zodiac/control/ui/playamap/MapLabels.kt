@@ -16,6 +16,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.sp
+import org.pureagave.zodiac.control.core.geo.LabelPlacer
 import org.pureagave.zodiac.control.core.model.PlayaMap
 
 // Zoom thresholds (px/m) above which a layer's labels start drawing. Tuned
@@ -33,6 +34,10 @@ private const val CPN_TEXT_SP = 9f
 private const val ART_MAJOR_TEXT_SP = 12f
 private const val ART_MINOR_TEXT_SP = 8f
 private const val LABEL_OFFSET_PX = 6f
+
+// Map drawing is main-thread only, so one placer serves every map on screen.
+// Each label pass resets it, so maps never block each other's labels.
+private val labelPlacer = LabelPlacer()
 
 /**
  * Pre-measured glyph layouts for every label site on the playa, parallel
@@ -117,6 +122,9 @@ private fun buildLabelLayouts(
  * minor). Toilets are intentionally unlabeled — the source data has no
  * per-bank name and the marker colour carries the meaning.
  *
+ * Layers are offered in that priority order through [labelPlacer], so a label
+ * that would print over one already drawn is skipped rather than overprinted.
+ *
  * Each label's [TextLayoutResult] was pre-measured by [rememberLabelLayouts]
  * and is just blitted here — no per-frame glyph layout, no native Paint
  * fiddling. The [color] override lets the same cache serve every concept
@@ -128,6 +136,7 @@ fun DrawScope.drawProjectedLabels(
     color: Color,
     pixelsPerMeter: Double,
 ) {
+    labelPlacer.reset(size.width, size.height)
     if (pixelsPerMeter >= PLAZA_LABEL_ZOOM) drawLayer(projected.plazaLabels, layouts.plaza, color)
     drawArtLayer(projected.artLabels, layouts.art, color, pixelsPerMeter)
     if (pixelsPerMeter >= STREET_LABEL_ZOOM) drawLayer(projected.streetLabels, layouts.street, color)
@@ -159,20 +168,20 @@ private fun DrawScope.drawArtLayer(
 /**
  * Draw [layout] horizontally centered on [pos.x] with the baseline at
  * `pos.y - LABEL_OFFSET_PX` — the same anchor the previous native
- * `Paint.Align.CENTER` + `drawText(text, x, y, paint)` produced.
+ * `Paint.Align.CENTER` + `drawText(text, x, y, paint)` produced — unless
+ * [labelPlacer] says that spot is already taken or off screen.
  */
 private fun DrawScope.drawCenteredText(
     pos: Offset,
     layout: TextLayoutResult,
     color: Color,
 ) {
+    val left = pos.x - layout.size.width / 2f
+    val top = pos.y - LABEL_OFFSET_PX - layout.firstBaseline
+    if (!labelPlacer.tryPlace(left, top, left + layout.size.width, top + layout.size.height)) return
     drawText(
         textLayoutResult = layout,
         color = color,
-        topLeft =
-            Offset(
-                x = pos.x - layout.size.width / 2f,
-                y = pos.y - LABEL_OFFSET_PX - layout.firstBaseline,
-            ),
+        topLeft = Offset(x = left, y = top),
     )
 }
