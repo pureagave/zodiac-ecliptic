@@ -1,5 +1,7 @@
 # Zodiac
 
+![Zodiac at dusk on the open playa, Black Rock City](docs/images/zodiac-playa.jpg)
+
 *Software for Zodiac: a retro-futuristic, post-apocalyptic people carrier that
 I run at Burning Man, with a cockpit straight out of 80s science
 fiction.*
